@@ -1,6 +1,16 @@
-# gcode - Ghost Code Unicode Library
+<div align="center">
+  <img src="assets/icons/gcode-lib.png" alt="gcode logo" width="200">
 
-🚀 **The fastest, most efficient Unicode library optimized for terminal emulators**
+  # gcode - Ghost Code Unicode Library
+
+  🚀 **The fastest, most efficient Unicode library optimized for terminal emulators**
+
+  [![Zig 0.16.0-dev](https://img.shields.io/badge/zig-0.16.0--dev-f7a41d?style=flat-square&logo=zig)](https://ziglang.org/)
+  [![Unicode 15.1](https://img.shields.io/badge/unicode-15.1-blue?style=flat-square)](https://unicode.org/)
+  [![Terminal Optimized](https://img.shields.io/badge/terminal-optimized-green?style=flat-square)](https://github.com/ghostkellz/gcode)
+  [![Performance](https://img.shields.io/badge/performance-blazing%20fast-red?style=flat-square)](https://github.com/ghostkellz/gcode#performance)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+</div>
 
 ## Overview
 
