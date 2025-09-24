@@ -126,27 +126,37 @@ std.debug.print("Width: {}, Class: {}\n", .{ props.width, props.boundary_class }
 
 // Check grapheme boundaries for text cursor movement
 var state = gcode.GraphemeBreakState{};
-const text = "Hello 🏳️‍🌈 World";
-var iter = gcode.graphemeIterator(text);
-while (iter.next()) |cluster| {
-    std.debug.print("Grapheme cluster: {s}\n", .{cluster});
-}
+const is_boundary = gcode.isGraphemeBoundary('e', '́', &state);
 
 // Fast width calculation for terminal rendering
 const display_width = gcode.stringWidth("Hello 世界!");
 ```
 
+## Documentation
+
+📚 **Complete documentation available in [docs/](docs/)**
+
+- **[Terminal Integration Guide](docs/terminal-emulator-integration.md)** - Step-by-step integration for terminal emulators
+- **[API Reference](docs/api-reference.md)** - Complete API documentation
+- **[Performance Guide](docs/performance.md)** - Performance characteristics and optimization
+- **[Building Guide](docs/building.md)** - Installation and build instructions
+- **[Architecture](docs/architecture.md)** - Internal design and decisions
+
 ## Development Status
 
-🚧 **Alpha**: Core architecture extracted from Ghostshell, basic generator working.
+🚀 **Beta**: Core Unicode functionality complete, ready for terminal integration.
 - [x] Extract Ghostshell Unicode system
 - [x] Create Unicode data generator framework
 - [x] Basic 3-level lookup table implementation
 - [x] Zig v0.16 compatibility
-- [ ] Full Unicode data integration
-- [ ] Complete East Asian Width parsing
-- [ ] Production-ready grapheme boundary detection
+- [x] Full Unicode data integration (UnicodeData.txt, EastAsianWidth.txt)
+- [x] Complete Unicode case conversion (uppercase/lowercase/titlecase)
+- [x] Unicode normalization (NFC/NFD/NFKC/NFKD)
+- [x] Production-ready grapheme boundary detection
 - [ ] Integration testing with Ghostshell
+- [ ] Performance benchmarking vs zg/ziglyph
+- [ ] Documentation completion
+- [ ] API stabilization for v1.0
 
 ## Contributing
 
@@ -158,4 +168,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**Built with ⚡ by GhostKellz**
+**Built with Zig ⚡**

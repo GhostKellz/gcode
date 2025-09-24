@@ -16,6 +16,15 @@ pub fn main() !void {
     const test_string = "Hello 世界";
     const str_width = gcode.stringWidth(test_string);
     std.debug.print("Width of '{s}': {}\n", .{ test_string, str_width });
+
+    // Test case conversion
+    const char_a = 'a';
+    const char_A = 'A';
+    const converted_a_to_upper = gcode.toUpper(char_a);
+    const converted_A_to_lower = gcode.toLower(char_A);
+
+    std.debug.print("U+{X} ('{c}') to upper: U+{X}\n", .{ char_a, char_a, converted_a_to_upper });
+    std.debug.print("U+{X} ('{c}') to lower: U+{X}\n", .{ char_A, char_A, converted_A_to_lower });
 }
 
 test "simple test" {

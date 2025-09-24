@@ -219,12 +219,12 @@ pub fn toTitle(cp: u21) u21 {
 }
 
 fn caseConvert(cp: u21, case: Case) u21 {
-    // For now, only handle ASCII case conversion
-    // TODO: Use Unicode case conversion tables
+    const props = table.get(cp);
+
     return switch (case) {
-        .lower => if (cp >= 'A' and cp <= 'Z') cp + 32 else cp,
-        .upper => if (cp >= 'a' and cp <= 'z') cp - 32 else cp,
-        .title => if (cp >= 'a' and cp <= 'z') cp - 32 else cp,
+        .lower => if (props.lowercase != 0) props.lowercase else cp,
+        .upper => if (props.uppercase != 0) props.uppercase else cp,
+        .title => if (props.titlecase != 0) props.titlecase else cp,
     };
 }
 

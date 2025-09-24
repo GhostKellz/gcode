@@ -12,10 +12,22 @@ pub const Properties = packed struct {
     /// Grapheme boundary class.
     grapheme_boundary_class: GraphemeBoundaryClass = .invalid,
 
+    /// Uppercase mapping (0 if no mapping)
+    uppercase: u21 = 0,
+
+    /// Lowercase mapping (0 if no mapping)
+    lowercase: u21 = 0,
+
+    /// Titlecase mapping (0 if no mapping)
+    titlecase: u21 = 0,
+
     /// Check if two properties are equal (needed for table generation)
     pub fn eql(a: Properties, b: Properties) bool {
         return a.width == b.width and
-            a.grapheme_boundary_class == b.grapheme_boundary_class;
+            a.grapheme_boundary_class == b.grapheme_boundary_class and
+            a.uppercase == b.uppercase and
+            a.lowercase == b.lowercase and
+            a.titlecase == b.titlecase;
     }
 
     /// Format for debugging
@@ -31,10 +43,16 @@ pub const Properties = packed struct {
             \\.{{
             \\    .width= {},
             \\    .grapheme_boundary_class= .{s},
+            \\    .uppercase= {},
+            \\    .lowercase= {},
+            \\    .titlecase= {},
             \\}}
         , .{
             self.width,
             @tagName(self.grapheme_boundary_class),
+            self.uppercase,
+            self.lowercase,
+            self.titlecase,
         });
     }
 };

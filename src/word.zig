@@ -114,11 +114,11 @@ fn wordBreakClass(
     state: *BreakState,
 ) bool {
     _ = state; // TODO: Implement full word boundary state machine
-    
+
     // Simplified word boundary rules - should be expanded to full UAX #29
     // For now, just break on different classes
     if (wbc1 != wbc2) return true;
-    
+
     // Don't break within sequences of the same type
     return false;
 }
