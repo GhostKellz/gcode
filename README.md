@@ -16,6 +16,12 @@
 
 gcode is a cutting-edge Unicode processing library built specifically for terminal emulators and text-based applications. Unlike general-purpose Unicode libraries, gcode is laser-focused on the exact Unicode operations terminals need with uncompromising performance.
 
+## Disclaimer 
+⚠️ **EXPERIMENTAL LIBRARY - FOR LAB/PERSONAL USE** ⚠️
+    This is an experimental library under active development. It is 
+    intended for research, learning, and personal projects. The API is subject
+    to change!
+
 ## Why gcode?
 
 **🔥 Performance First**

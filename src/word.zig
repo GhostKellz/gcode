@@ -2,125 +2,248 @@
 //! Based on Unicode Standard Annex #29
 
 const std = @import("std");
+const props = @import("properties.zig");
 
-/// Word break classes for Unicode word boundary detection.
-pub const WordBreakClass = enum(u4) {
-    other,
-    cr,
-    lf,
-    newline,
-    extend,
-    regional_indicator,
-    format,
-    katakana,
-    aletter,
-    midletter,
-    midnum,
-    midnumlet,
+const WordBreakClass = props.WordBreakClass;
+const GraphemeBoundaryClass = props.GraphemeBoundaryClass;
+const tables = props.tables;
+
+fn isIgnorable(class: WordBreakClass) bool {
+    return switch (class) {
+        .extend,
+        .format,
+        .zwj,
+        .ebase,
+        .ebase_gaz,
+        .emodifier,
+        .glue_after_zwj,
+        => true,
+        else => false,
+    };
+}
+
+fn isNewline(class: WordBreakClass) bool {
+    return class == .cr or class == .lf or class == .newline;
+}
+
+fn isAHLetter(class: WordBreakClass) bool {
+    return class == .aletter or class == .hebrew_letter;
+}
+
+fn isMidLetterOrMidNumLetQ(class: WordBreakClass) bool {
+    return class == .midletter or class == .midnumlet or class == .single_quote;
+}
+
+fn isMidNumOrMidNumLetQ(class: WordBreakClass) bool {
+    return class == .midnum or class == .midnumlet or class == .single_quote;
+}
+
+fn isExtendNumLetStarter(class: WordBreakClass) bool {
+    return isAHLetter(class) or class == .numeric or class == .katakana or class == .extendnumlet;
+}
+
+fn isExtendNumLetFollower(class: WordBreakClass) bool {
+    return isAHLetter(class) or class == .numeric or class == .katakana;
+}
+
+const PendingMid = enum(u3) {
+    none,
+    ahletter,
     numeric,
-    extendnumlet,
-    zwj,
-    wsegspace,
+    katakana,
+    hebrew_double_quote,
 };
 
-const tables = @import("properties.zig").tables;
+/// The state that must be maintained between calls to wordBreak.
+pub const BreakState = packed struct(u10) {
+    last_class: WordBreakClass = .other,
+    pending_mid: PendingMid = .none,
+    ri_parity: bool = false,
+    initialized: bool = false,
+
+    fn push(self: *BreakState, class: WordBreakClass) void {
+        if (isIgnorable(class)) return;
+
+        const prev = self.last_class;
+        if (class == .regional_indicator and self.initialized and prev == .regional_indicator) {
+            self.ri_parity = !self.ri_parity;
+        } else if (class == .regional_indicator) {
+            self.ri_parity = true;
+        } else {
+            self.ri_parity = false;
+        }
+
+        self.last_class = class;
+        self.initialized = true;
+    }
+};
+
+fn computeBreak(
+    state: *BreakState,
+    class1_effective: WordBreakClass,
+    class1_raw: WordBreakClass,
+    class2: WordBreakClass,
+    gbc2: GraphemeBoundaryClass,
+) bool {
+    // WB3: CR x LF
+    if (class1_raw == .cr and class2 == .lf) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB3a/WB3b: break before and after newline types
+    if (isNewline(class1_raw)) {
+        state.pending_mid = .none;
+        return true;
+    }
+    if (isNewline(class2)) {
+        state.pending_mid = .none;
+        return true;
+    }
+
+    // WB3c: ZWJ x Extended_Pictographic
+    if (class1_raw == .zwj and gbc2.isExtendedPictographic()) {
+        return false;
+    }
+
+    // WB3d: WSegSpace x WSegSpace
+    if (class1_effective == .wsegspace and class2 == .wsegspace) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB4: ignore extend/format/zwj classes (handled by state management)
+    if (isIgnorable(class2)) {
+        return false;
+    }
+
+    const c1 = class1_effective;
+    const c2 = class2;
+
+    // WB5: AHLetter x AHLetter
+    if (isAHLetter(c1) and isAHLetter(c2)) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB6: AHLetter x (MidLetter | MidNumLetQ)
+    if (isAHLetter(c1) and isMidLetterOrMidNumLetQ(c2)) {
+        state.pending_mid = .ahletter;
+        return false;
+    }
+
+    // WB7: (MidLetter | MidNumLetQ) x AHLetter following WB6
+    if (state.pending_mid == .ahletter and isMidLetterOrMidNumLetQ(c1) and isAHLetter(c2)) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB7a: Hebrew_Letter x Single_Quote
+    if (c1 == .hebrew_letter and c2 == .single_quote) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB7b: Hebrew_Letter x Double_Quote Hebrew_Letter
+    if (c1 == .hebrew_letter and c2 == .double_quote) {
+        state.pending_mid = .hebrew_double_quote;
+        return false;
+    }
+
+    // WB7c: Hebrew_Letter Double_Quote x Hebrew_Letter
+    if (state.pending_mid == .hebrew_double_quote and c1 == .double_quote and c2 == .hebrew_letter) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB8: Numeric x Numeric
+    if (c1 == .numeric and c2 == .numeric) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB9 / WB10: AHLetter <> Numeric
+    if ((isAHLetter(c1) and c2 == .numeric) or (c1 == .numeric and isAHLetter(c2))) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB11 / WB12: numeric sequences with punctuation
+    if (c1 == .numeric and isMidNumOrMidNumLetQ(c2)) {
+        state.pending_mid = .numeric;
+        return false;
+    }
+    if (state.pending_mid == .numeric and isMidNumOrMidNumLetQ(c1) and c2 == .numeric) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB13: Katakana x Katakana
+    if (c1 == .katakana and c2 == .katakana) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB13 (mid) handling
+    if (c1 == .katakana and isMidNumOrMidNumLetQ(c2)) {
+        state.pending_mid = .katakana;
+        return false;
+    }
+    if (state.pending_mid == .katakana and isMidNumOrMidNumLetQ(c1) and c2 == .katakana) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB13a / WB13b: ExtendNumLet sequences
+    if (isExtendNumLetStarter(c1) and c2 == .extendnumlet) {
+        state.pending_mid = .none;
+        return false;
+    }
+    if (c1 == .extendnumlet and isExtendNumLetFollower(c2)) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // WB15 / WB16: Regional indicator sequences (pairing)
+    if (c1 == .regional_indicator and c2 == .regional_indicator and state.ri_parity) {
+        state.pending_mid = .none;
+        return false;
+    }
+
+    // Default: break everywhere else
+    state.pending_mid = .none;
+    return true;
+}
 
 /// Determines if there is a word break between two codepoints.
 /// This must be called sequentially maintaining the state between calls.
 pub fn wordBreak(cp1: u21, cp2: u21, state: *BreakState) bool {
-    const wbc1 = getWordBreakClass(cp1);
-    const wbc2 = getWordBreakClass(cp2);
+    const props1 = tables.get(cp1);
+    const props2 = tables.get(cp2);
 
-    const value = Precompute.data[
-        (Precompute.Key{
-            .wbc1 = wbc1,
-            .wbc2 = wbc2,
-            .state = state.*,
-        }).index()
-    ];
-    state.* = value.state;
-    return value.result;
-}
+    const class1 = props1.word_break_class;
+    const class2 = props2.word_break_class;
 
-/// The state that must be maintained between calls to wordBreak.
-pub const BreakState = packed struct(u3) {
-    regional_indicator: bool = false,
-    aletter: bool = false,
-    numeric: bool = false,
-};
+    if (!state.initialized) {
+        state.push(class1);
+    }
 
-/// Precomputed lookup table for all word boundary permutations.
-/// This table encodes the Unicode word boundary rules in a compact format.
-const Precompute = struct {
-    const Key = packed struct(u11) {
-        state: BreakState,
-        wbc1: WordBreakClass,
-        wbc2: WordBreakClass,
+    const effective_class1 = if (state.initialized)
+        (if (isIgnorable(class1)) state.last_class else class1)
+    else if (isIgnorable(class1))
+        WordBreakClass.other
+    else
+        class1;
 
-        fn index(self: Key) usize {
-            return @intCast(@as(u11, @bitCast(self)));
-        }
-    };
+    const result = computeBreak(state, effective_class1, class1, class2, props2.grapheme_boundary_class);
 
-    const Value = packed struct(u4) {
-        result: bool,
-        state: BreakState,
-    };
+    state.push(class2);
 
-    /// Precomputed table of all possible word boundary decisions.
-    /// Generated at compile time using the Unicode word boundary algorithm.
-    const data = precompute: {
-        var result: [1 << 11]Value = undefined;
+    if (result and !isIgnorable(class2)) {
+        state.pending_mid = .none;
+    }
 
-        @setEvalBranchQuota(10_000);
-        const info = @typeInfo(WordBreakClass).@"enum";
-        for (0..1 << 3) |state_init| { // 2^3 = 8 possible states
-            for (info.fields) |field1| {
-                for (info.fields) |field2| {
-                    var state: BreakState = @bitCast(@as(u3, @intCast(state_init)));
-                    const key: Key = .{
-                        .wbc1 = @field(WordBreakClass, field1.name),
-                        .wbc2 = @field(WordBreakClass, field2.name),
-                        .state = state,
-                    };
-                    const v = wordBreakClass(key.wbc1, key.wbc2, &state);
-                    result[key.index()] = .{ .result = v, .state = state };
-                }
-            }
-        }
-
-        break :precompute result;
-    };
-};
-
-/// Get the word break class for a Unicode codepoint.
-/// For now, uses simplified classification - should be replaced with Unicode data.
-fn getWordBreakClass(cp: u21) WordBreakClass {
-    // Basic classification - should be replaced with Unicode WordBreakProperty.txt data
-    if (cp == '\r') return .cr;
-    if (cp == '\n') return .lf;
-    if (cp >= 'a' and cp <= 'z') return .aletter;
-    if (cp >= 'A' and cp <= 'Z') return .aletter;
-    if (cp >= '0' and cp <= '9') return .numeric;
-    if (cp == ' ' or cp == '\t') return .wsegspace;
-    return .other;
-}
-
-/// Core word boundary algorithm from Unicode UAX #29.
-/// This is used only at compile time to precompute the lookup table.
-fn wordBreakClass(
-    wbc1: WordBreakClass,
-    wbc2: WordBreakClass,
-    state: *BreakState,
-) bool {
-    _ = state; // TODO: Implement full word boundary state machine
-
-    // Simplified word boundary rules - should be expanded to full UAX #29
-    // For now, just break on different classes
-    if (wbc1 != wbc2) return true;
-
-    // Don't break within sequences of the same type
-    return false;
+    return result;
 }
 
 /// Iterator for walking through word boundaries in UTF-8 text.
@@ -226,5 +349,27 @@ test "word iterator" {
         try testing.expect(iter.next() == null);
     }
 
-    // TODO: Add more comprehensive tests once tables are generated
+    // Apostrophes inside words
+    {
+        var iter = WordIterator.init("can't stop");
+        try testing.expect(std.mem.eql(u8, iter.next().?, "can't"));
+        try testing.expect(std.mem.eql(u8, iter.next().?, " "));
+        try testing.expect(std.mem.eql(u8, iter.next().?, "stop"));
+        try testing.expect(iter.next() == null);
+    }
+
+    // Numeric sequences with punctuation
+    {
+        var iter = WordIterator.init("3.1415");
+        try testing.expect(std.mem.eql(u8, iter.next().?, "3.1415"));
+        try testing.expect(iter.next() == null);
+    }
+
+    // Regional indicator flag sequence should remain unbroken
+    {
+        const flag = "\u{1F1FA}\u{1F1F8}"; // US flag
+        var iter = WordIterator.init(flag);
+        try testing.expect(std.mem.eql(u8, iter.next().?, flag));
+        try testing.expect(iter.next() == null);
+    }
 }

@@ -5,32 +5,41 @@ const lut = @import("lut.zig");
 /// Optimized for terminal emulators with minimal memory footprint.
 /// Compatible with Ghostshell's unicode module API.
 pub const Properties = packed struct {
-    /// Codepoint width. We clamp to [0, 2] since terminals handle control
-    /// characters and we max out at 2 for wide characters.
-    width: u2 = 0,
+    /// Codepoint width clamped to [0, 2].
+    width: u2 = 1,
 
-    /// Grapheme boundary class.
+    /// True when the character is East Asian Ambiguous width.
+    ambiguous_width: bool = false,
+
+    /// Grapheme cluster break class.
     grapheme_boundary_class: GraphemeBoundaryClass = .invalid,
 
-    /// Uppercase mapping (0 if no mapping)
+    /// Word break class.
+    word_break_class: WordBreakClass = .other,
+
+    /// Canonical combining class.
+    combining_class: u8 = 0,
+
+    /// Uppercase mapping (0 when no mapping exists).
     uppercase: u21 = 0,
 
-    /// Lowercase mapping (0 if no mapping)
+    /// Lowercase mapping (0 when no mapping exists).
     lowercase: u21 = 0,
 
-    /// Titlecase mapping (0 if no mapping)
+    /// Titlecase mapping (0 when no mapping exists).
     titlecase: u21 = 0,
 
-    /// Check if two properties are equal (needed for table generation)
     pub fn eql(a: Properties, b: Properties) bool {
         return a.width == b.width and
+            a.ambiguous_width == b.ambiguous_width and
             a.grapheme_boundary_class == b.grapheme_boundary_class and
+            a.word_break_class == b.word_break_class and
+            a.combining_class == b.combining_class and
             a.uppercase == b.uppercase and
             a.lowercase == b.lowercase and
             a.titlecase == b.titlecase;
     }
 
-    /// Format for debugging
     pub fn format(
         self: Properties,
         comptime layout: []const u8,
@@ -39,21 +48,19 @@ pub const Properties = packed struct {
     ) !void {
         _ = layout;
         _ = opts;
-        try std.fmt.format(writer,
-            \\.{{
-            \\    .width= {},
-            \\    .grapheme_boundary_class= .{s},
-            \\    .uppercase= {},
-            \\    .lowercase= {},
-            \\    .titlecase= {},
-            \\}}
-        , .{
-            self.width,
-            @tagName(self.grapheme_boundary_class),
-            self.uppercase,
-            self.lowercase,
-            self.titlecase,
-        });
+        try writer.print(
+            ".{{ .width = {d}, .ambiguous_width = {}, .grapheme_boundary_class = .{s}, .word_break_class = .{s}, .combining_class = {d}, .uppercase = {d}, .lowercase = {d}, .titlecase = {d} }}",
+            .{
+                self.width,
+                self.ambiguous_width,
+                @tagName(self.grapheme_boundary_class),
+                @tagName(self.word_break_class),
+                self.combining_class,
+                self.uppercase,
+                self.lowercase,
+                self.titlecase,
+            },
+        );
     }
 };
 
@@ -93,23 +100,30 @@ pub const GraphemeBoundaryClass = enum(u4) {
 
 /// Word break classes for Unicode word boundary detection.
 /// Based on Unicode Standard Annex #29.
-pub const WordBreakClass = enum(u4) {
-    other = 0,
-    cr = 1,
-    lf = 2,
-    newline = 3,
-    extend = 4,
-    regional_indicator = 5,
-    format = 6,
-    katakana = 7,
-    aletter = 8,
-    midletter = 9,
-    midnum = 10,
-    midnumlet = 11,
-    numeric = 12,
-    extendnumlet = 13,
-    zwj = 14,
-    wsegspace = 15,
+pub const WordBreakClass = enum(u5) {
+    other,
+    cr,
+    lf,
+    newline,
+    extend,
+    regional_indicator,
+    format,
+    katakana,
+    hebrew_letter,
+    aletter,
+    midletter,
+    midnum,
+    midnumlet,
+    numeric,
+    extendnumlet,
+    zwj,
+    wsegspace,
+    single_quote,
+    double_quote,
+    ebase,
+    ebase_gaz,
+    emodifier,
+    glue_after_zwj,
 };
 
 /// Context for generating Unicode property tables.
