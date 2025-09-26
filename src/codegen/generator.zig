@@ -98,6 +98,110 @@ pub const LineBreakClass = enum(u6) {
     BB, // Break Before
     HY, // Hyphen
     CB, // Contingent Break Opportunity
+};
+
+/// BiDi class for UAX #9 (Bidirectional Algorithm)
+pub const BiDiClass = enum(u5) {
+    L,   // Left-to-Right
+    R,   // Right-to-Left
+    AL,  // Right-to-Left Arabic
+    EN,  // European Number
+    ES,  // European Number Separator
+    ET,  // European Number Terminator
+    AN,  // Arabic Number
+    CS,  // Common Number Separator
+    NSM, // Nonspacing Mark
+    BN,  // Boundary Neutral
+    B,   // Paragraph Separator
+    S,   // Segment Separator
+    WS,  // Whitespace
+    ON,  // Other Neutrals
+    LRE, // Left-to-Right Embedding
+    LRO, // Left-to-Right Override
+    RLE, // Right-to-Left Embedding
+    RLO, // Right-to-Left Override
+    PDF, // Pop Directional Format
+    LRI, // Left-to-Right Isolate
+    RLI, // Right-to-Left Isolate
+    FSI, // First Strong Isolate
+    PDI, // Pop Directional Isolate
+};
+
+/// Script property for text shaping guidance
+pub const Script = enum(u8) {
+    // Common and inherited
+    Common,
+    Inherited,
+
+    // Major scripts for terminal use
+    Latin,
+    Greek,
+    Cyrillic,
+    Armenian,
+    Hebrew,
+    Arabic,
+    Syriac,
+    Thaana,
+    Devanagari,
+    Bengali,
+    Gurmukhi,
+    Gujarati,
+    Oriya,
+    Tamil,
+    Telugu,
+    Kannada,
+    Malayalam,
+    Sinhala,
+    Thai,
+    Lao,
+    Tibetan,
+    Myanmar,
+    Georgian,
+    Hangul,
+    Ethiopian,
+    Cherokee,
+    Canadian_Aboriginal,
+    Ogham,
+    Runic,
+    Khmer,
+    Mongolian,
+    Hiragana,
+    Katakana,
+    Bopomofo,
+    Han,
+    Yi,
+    Old_Italic,
+    Gothic,
+    Deseret,
+    Tagalog,
+    Hanunoo,
+    Buhid,
+    Tagbanwa,
+    Limbu,
+    Tai_Le,
+    Linear_B,
+    Ugaritic,
+    Shavian,
+    Osmanya,
+    Cypriot,
+    Braille,
+    Buginese,
+    Coptic,
+    New_Tai_Lue,
+    Glagolitic,
+    Tifinagh,
+    Syloti_Nagri,
+    Old_Persian,
+    Kharoshthi,
+    Balinese,
+    Cuneiform,
+    Phoenician,
+    Phags_Pa,
+    Nko,
+
+    // Additional scripts (truncated for space)
+    Unknown,
+};
     CL, // Close Punctuation
     CP, // Close Parenthesis
     EX, // Exclamation/Interrogation

@@ -3,5 +3,8 @@
 *.o
 *.exe
 /archive 
-
+archive/
 CLAUDE.md
+.zig-cache/ 
+TODO.md 
+ROADMAP.md

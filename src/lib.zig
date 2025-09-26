@@ -15,7 +15,41 @@ pub const ReverseGraphemeIterator = @import("grapheme.zig").ReverseGraphemeItera
 
 // Word boundary detection
 pub const WordBreakState = @import("word.zig").BreakState;
+pub const WordIterator = @import("word.zig").WordIterator;
+pub const ReverseWordIterator = @import("word.zig").ReverseWordIterator;
 pub const wordBreak = @import("word.zig").wordBreak;
+
+// BiDi algorithm for RTL text
+pub const BiDi = @import("bidi.zig").BiDi;
+pub const BiDiClass = @import("bidi.zig").BiDiClass;
+pub const BiDiContext = @import("bidi.zig").BiDiContext;
+pub const Direction = @import("bidi.zig").Direction;
+pub const Run = @import("bidi.zig").Run;
+pub const getBiDiClass = @import("bidi.zig").getBiDiClass;
+pub const reorderForDisplay = @import("bidi.zig").reorderForDisplay;
+pub const calculateCursorPosition = @import("bidi.zig").calculateCursorPosition;
+pub const visualToLogical = @import("bidi.zig").visualToLogical;
+
+// Script detection for shaping guidance
+pub const Script = @import("script.zig").Script;
+pub const ScriptRun = @import("script.zig").ScriptRun;
+pub const ScriptDetector = @import("script.zig").ScriptDetector;
+pub const ShapingInfo = @import("script.zig").ShapingInfo;
+pub const ShapingApproach = @import("script.zig").ShapingApproach;
+pub const getScript = @import("script.zig").getScript;
+pub const detectPrimaryScript = @import("script.zig").detectPrimaryScript;
+pub const requiresSpecialTerminalHandling = @import("script.zig").requiresSpecialTerminalHandling;
+
+// Complex script analysis for advanced text processing
+pub const ComplexScriptCategory = @import("complex_script.zig").ComplexScriptCategory;
+pub const ComplexScriptAnalysis = @import("complex_script.zig").ComplexScriptAnalysis;
+pub const ComplexScriptAnalyzer = @import("complex_script.zig").ComplexScriptAnalyzer;
+pub const ArabicJoiningType = @import("complex_script.zig").ArabicJoiningType;
+pub const ArabicForm = @import("complex_script.zig").ArabicForm;
+pub const IndicCategory = @import("complex_script.zig").IndicCategory;
+pub const CJKWidth = @import("complex_script.zig").CJKWidth;
+pub const getLineBreakBehavior = @import("complex_script.zig").getLineBreakBehavior;
+pub const getCursorGranularity = @import("complex_script.zig").getCursorGranularity;
 
 // Main API functions
 pub const getProperties = @import("properties.zig").getProperties;
@@ -150,51 +184,7 @@ pub fn findNextGrapheme(text: []const u8, pos: usize) usize {
     return text.len;
 }
 
-// Word processing utilities
-pub const WordIterator = struct {
-    bytes: []const u8,
-    index: usize = 0,
-
-    pub fn init(bytes: []const u8) WordIterator {
-        return .{ .bytes = bytes };
-    }
-
-    pub fn next(self: *WordIterator) ?struct { bytes: []const u8, offset: usize } {
-        if (self.index >= self.bytes.len) return null;
-
-        const start = self.index;
-        var end = start;
-
-        // Simple word segmentation: split on whitespace
-        // TODO: Implement proper Unicode word boundaries (UAX #29)
-        while (end < self.bytes.len) {
-            const cp_len = std.unicode.utf8ByteSequenceLength(self.bytes[end]) catch break;
-            if (end + cp_len > self.bytes.len) break;
-
-            const cp = std.unicode.utf8Decode(self.bytes[end .. end + cp_len]) catch break;
-            if (std.ascii.isWhitespace(@intCast(cp))) {
-                if (end > start) break;
-                // Skip leading whitespace
-                end += cp_len;
-                self.index = end;
-                return self.next(); // Recurse to find next word
-            } else {
-                end += cp_len;
-            }
-        }
-
-        if (end > start) {
-            self.index = end;
-            return .{
-                .bytes = self.bytes[start..end],
-                .offset = start,
-            };
-        }
-
-        return null;
-    }
-};
-
+// Word processing utilities (now using advanced UAX #29 implementation)
 pub fn wordIterator(bytes: []const u8) WordIterator {
     return WordIterator.init(bytes);
 }

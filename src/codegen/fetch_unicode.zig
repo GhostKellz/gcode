@@ -8,11 +8,21 @@ const Allocator = std.mem.Allocator;
 pub const UnicodeFile = enum {
     east_asian_width,
     grapheme_break_property,
+    word_break_property,
+    scripts,
+    bidi_class,
+    bidi_mirroring,
+    line_break,
 
     pub fn url(self: UnicodeFile) []const u8 {
         return switch (self) {
             .east_asian_width => "https://www.unicode.org/Public/UCD/latest/ucd/EastAsianWidth.txt",
             .grapheme_break_property => "https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakProperty.txt",
+            .word_break_property => "https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/WordBreakProperty.txt",
+            .scripts => "https://www.unicode.org/Public/UCD/latest/ucd/Scripts.txt",
+            .bidi_class => "https://www.unicode.org/Public/UCD/latest/ucd/extracted/DerivedBidiClass.txt",
+            .bidi_mirroring => "https://www.unicode.org/Public/UCD/latest/ucd/BidiMirroring.txt",
+            .line_break => "https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/LineBreakProperty.txt",
         };
     }
 
@@ -20,6 +30,11 @@ pub const UnicodeFile = enum {
         return switch (self) {
             .east_asian_width => "EastAsianWidth.txt",
             .grapheme_break_property => "GraphemeBreakProperty.txt",
+            .word_break_property => "WordBreakProperty.txt",
+            .scripts => "Scripts.txt",
+            .bidi_class => "DerivedBidiClass.txt",
+            .bidi_mirroring => "BidiMirroring.txt",
+            .line_break => "LineBreakProperty.txt",
         };
     }
 };

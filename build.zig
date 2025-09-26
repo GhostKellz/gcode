@@ -44,6 +44,10 @@ pub fn build(b: *std.Build) void {
             .{ .name = "properties", .module = b.createModule(.{ .root_source_file = b.path("src/properties.zig") }) },
             .{ .name = "lut", .module = b.createModule(.{ .root_source_file = b.path("src/lut.zig") }) },
             .{ .name = "grapheme", .module = b.createModule(.{ .root_source_file = b.path("src/grapheme.zig") }) },
+            .{ .name = "word", .module = b.createModule(.{ .root_source_file = b.path("src/word.zig") }) },
+            .{ .name = "bidi", .module = b.createModule(.{ .root_source_file = b.path("src/bidi.zig") }) },
+            .{ .name = "script", .module = b.createModule(.{ .root_source_file = b.path("src/script.zig") }) },
+            .{ .name = "complex_script", .module = b.createModule(.{ .root_source_file = b.path("src/complex_script.zig") }) },
         },
     });
 
