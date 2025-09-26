@@ -202,7 +202,6 @@ pub const ComplexScriptAnalyzer = struct {
 
     /// Analyze a single codepoint for complex script properties
     pub fn analyzeCodepoint(self: Self, cp: u32) ComplexScriptAnalysis {
-        _ = self;
 
         const char_script = script.getScript(cp);
         const category = ComplexScriptCategory.fromScript(char_script);
@@ -323,7 +322,6 @@ pub const ComplexScriptAnalyzer = struct {
         text: []const u32,
         analyses: []ComplexScriptAnalysis,
     ) !void {
-        _ = self;
 
         // Arabic joining context
         for (analyses, 0..) |*analysis, i| {

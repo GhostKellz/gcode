@@ -175,7 +175,7 @@ pub const BiDi = struct {
         // Step 1: Determine character types (already done via getBiDiClass)
 
         // Step 2: Resolve explicit formatting characters
-        var levels = try self.allocator.alloc(Level, text.len);
+        const levels = try self.allocator.alloc(Level, text.len);
         defer self.allocator.free(levels);
 
         try self.resolveExplicitLevels(text, &context, levels);
@@ -436,7 +436,7 @@ pub fn reorderForDisplay(
     defer allocator.free(runs);
 
     // Create a copy for reordering
-    var result = try allocator.dupe(u32, text);
+    const result = try allocator.dupe(u32, text);
 
     // Reverse RTL runs
     for (runs) |run| {
