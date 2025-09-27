@@ -48,6 +48,9 @@ pub fn build(b: *std.Build) void {
             .{ .name = "bidi", .module = b.createModule(.{ .root_source_file = b.path("src/bidi.zig") }) },
             .{ .name = "script", .module = b.createModule(.{ .root_source_file = b.path("src/script.zig") }) },
             .{ .name = "complex_script", .module = b.createModule(.{ .root_source_file = b.path("src/complex_script.zig") }) },
+            .{ .name = "shaping", .module = b.createModule(.{ .root_source_file = b.path("src/shaping.zig") }) },
+            .{ .name = "advanced_shaping", .module = b.createModule(.{ .root_source_file = b.path("src/advanced_shaping.zig") }) },
+            .{ .name = "benchmark", .module = b.createModule(.{ .root_source_file = b.path("src/benchmark.zig") }) },
         },
     });
 
@@ -151,6 +154,22 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
+
+    // Benchmark step for performance testing
+    const benchmark_step = b.step("benchmark", "Run performance benchmarks");
+    const benchmark_exe = b.addExecutable(.{
+        .name = "benchmark",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/benchmark.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "gcode", .module = mod },
+            },
+        }),
+    });
+    const run_benchmark = b.addRunArtifact(benchmark_exe);
+    benchmark_step.dependOn(&run_benchmark.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //

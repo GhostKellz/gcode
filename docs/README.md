@@ -6,6 +6,8 @@ Welcome to the gcode documentation! This directory contains comprehensive docume
 
 ### 📖 User Guides
 
+- **[Quick Start](quickstart.md)** - Get started with gcode in minutes
+- **[Ghostshell Integration](ghostshell-integration.md)** - Replace harfbuzz with pure Zig Unicode processing
 - **[Terminal Emulator Integration](terminal-emulator-integration.md)** - Complete guide for integrating gcode into terminal emulators
 - **[Building and Installation](building.md)** - Installation, building, and deployment guide
 - **[Performance Guide](performance.md)** - Performance characteristics and optimization techniques
@@ -24,57 +26,73 @@ Welcome to the gcode documentation! This directory contains comprehensive docume
 
 If you're new to gcode, start here:
 
-1. **For Terminal Developers**: Read [Terminal Emulator Integration](terminal-emulator-integration.md)
-2. **For General Users**: Check the main [README.md](../README.md) in the project root
-3. **For API Details**: See [API Reference](api-reference.md)
+1. **New to gcode**: Start with [Quick Start](quickstart.md)
+2. **Ghostshell Integration**: See [Ghostshell Integration](ghostshell-integration.md)
+3. **Terminal Developers**: Read [Terminal Emulator Integration](terminal-emulator-integration.md)
+4. **API Details**: See [API Reference](api-reference.md)
 
-## Key Concepts
+## Key Features
 
-### 3-Level Lookup Tables
+### 🚀 Performance-Optimized
+- **< 50ns per character** for Latin text processing
+- **< 1MB memory** for shaping cache
+- **< 200KB binary** size impact
+- **> 95% cache hit rate** for terminal text
 
-gcode uses a revolutionary compressed lookup table system:
+### 🔤 Advanced Text Shaping
+- **16 Programming Ligatures**: →, ≠, >=, <=, etc.
+- **22 Kerning Pairs**: Professional typography
+- **Arabic Script**: Complete joining and contextual forms
+- **Indic Scripts**: Devanagari, Tamil, Bengali, Gujarati
+- **BiDi Support**: Enhanced RTL/LTR cursor positioning
 
-```
-Codepoint → Stage 1 (256 entries) → Stage 2 (compressed) → Properties
-```
-
-This provides O(1) lookups with minimal memory usage.
-
-### Terminal-Optimized
-
-Unlike general Unicode libraries, gcode focuses on terminal-specific operations:
-
-- Character width calculation
-- Grapheme cluster boundaries
-- East Asian Width support
-- Zero-width character handling
-
-### Zero Allocation
-
-Core functions are allocation-free, making gcode suitable for performance-critical terminal code.
+### 🌍 Complete Unicode Support
+- **Multi-Script Processing**: Automatic script detection
+- **Emoji Intelligence**: ZWJ sequences, modifiers, flags
+- **Terminal Optimization**: Monospace enforcement
+- **Memory Efficient**: 3-level compressed lookup tables
 
 ## Examples
 
-### Character Width
+### Text Shaping with Programming Ligatures
+
+```zig
+const gcode = @import("gcode");
+
+var shaper = gcode.TextShaper.init(allocator);
+defer shaper.deinit();
+
+const font_metrics = gcode.FontMetrics{
+    .units_per_em = 1000,
+    .cell_width = 600,
+    .line_height = 1200,
+    .baseline = 800,
+    .size = 12,
+};
+
+// Shape code with programming ligatures
+const glyphs = try shaper.shape("-> >= != <=", font_metrics);
+defer allocator.free(glyphs);
+```
+
+### Advanced Script Shaping
+
+```zig
+var advanced_shaper = gcode.AdvancedShaper.init(allocator);
+defer advanced_shaper.deinit();
+
+// Automatic script detection and shaping
+const arabic_glyphs = try advanced_shaper.shapeAdvanced("مرحبا", font_metrics);
+const indic_glyphs = try advanced_shaper.shapeAdvanced("नमस्ते", font_metrics);
+const emoji_glyphs = try advanced_shaper.shapeAdvanced("👨‍💻🏳️‍🌈", font_metrics);
+```
+
+### Character Properties
 
 ```zig
 const width = gcode.getWidth('한'); // Returns: 2 (double-width)
-```
-
-### Grapheme Iteration
-
-```zig
-var iter = gcode.graphemeIterator("Hello 🏳️‍🌈 World");
-while (iter.next()) |cluster| {
-    // Process each grapheme cluster
-}
-```
-
-### Case Conversion
-
-```zig
+const is_emoji = gcode.getProperties('🎉').general_category == .So;
 const upper = gcode.toUpper('a'); // 'A'
-const lower = gcode.toLower('A'); // 'a'
 ```
 
 ## Performance

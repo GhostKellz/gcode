@@ -113,18 +113,22 @@ pub const BiDiContext = struct {
     /// Override status
     override_status: enum { none, ltr, rtl } = .none,
 
+    /// Allocator for dynamic arrays
+    allocator: std.mem.Allocator,
+
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
-            .level_stack = std.ArrayList(Level).init(allocator),
-            .isolate_stack = std.ArrayList(usize).init(allocator),
+            .level_stack = std.ArrayList(Level){},
+            .isolate_stack = std.ArrayList(usize){},
+            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.level_stack.deinit();
-        self.isolate_stack.deinit();
+        self.level_stack.deinit(self.allocator);
+        self.isolate_stack.deinit(self.allocator);
     }
 
     pub fn reset(self: *Self, base_dir: Direction) void {
@@ -210,7 +214,7 @@ pub const BiDi = struct {
                     // Left-to-Right Embedding
                     const new_level = (context.current_level + 2) & ~@as(Level, 1);
                     if (new_level <= MAX_DEPTH) {
-                        try context.level_stack.append(context.current_level);
+                        try context.level_stack.append(context.allocator, context.current_level);
                         context.current_level = new_level;
                     }
                     levels[i] = context.current_level;
@@ -219,7 +223,7 @@ pub const BiDi = struct {
                     // Right-to-Left Embedding
                     const new_level = (context.current_level + 1) | 1;
                     if (new_level <= MAX_DEPTH) {
-                        try context.level_stack.append(context.current_level);
+                        try context.level_stack.append(context.allocator, context.current_level);
                         context.current_level = new_level;
                     }
                     levels[i] = context.current_level;
@@ -228,7 +232,7 @@ pub const BiDi = struct {
                     // Left-to-Right Override
                     const new_level = (context.current_level + 2) & ~@as(Level, 1);
                     if (new_level <= MAX_DEPTH) {
-                        try context.level_stack.append(context.current_level);
+                        try context.level_stack.append(context.allocator, context.current_level);
                         context.current_level = new_level;
                         context.override_status = .ltr;
                     }
@@ -238,7 +242,7 @@ pub const BiDi = struct {
                     // Right-to-Left Override
                     const new_level = (context.current_level + 1) | 1;
                     if (new_level <= MAX_DEPTH) {
-                        try context.level_stack.append(context.current_level);
+                        try context.level_stack.append(context.allocator, context.current_level);
                         context.current_level = new_level;
                         context.override_status = .rtl;
                     }
@@ -247,7 +251,7 @@ pub const BiDi = struct {
                 .PDF => {
                     // Pop Directional Format
                     if (context.level_stack.items.len > 0) {
-                        context.current_level = context.level_stack.pop();
+                        context.current_level = context.level_stack.pop().?;
                         context.override_status = .none;
                     }
                     levels[i] = context.current_level;
@@ -256,8 +260,8 @@ pub const BiDi = struct {
                     // Left-to-Right Isolate
                     const new_level = (context.current_level + 2) & ~@as(Level, 1);
                     if (new_level <= MAX_DEPTH) {
-                        try context.isolate_stack.append(i);
-                        try context.level_stack.append(context.current_level);
+                        try context.isolate_stack.append(context.allocator, i);
+                        try context.level_stack.append(context.allocator, context.current_level);
                         context.current_level = new_level;
                     }
                     levels[i] = context.current_level;
@@ -266,8 +270,8 @@ pub const BiDi = struct {
                     // Right-to-Left Isolate
                     const new_level = (context.current_level + 1) | 1;
                     if (new_level <= MAX_DEPTH) {
-                        try context.isolate_stack.append(i);
-                        try context.level_stack.append(context.current_level);
+                        try context.isolate_stack.append(context.allocator, i);
+                        try context.level_stack.append(context.allocator, context.current_level);
                         context.current_level = new_level;
                     }
                     levels[i] = context.current_level;
@@ -289,8 +293,8 @@ pub const BiDi = struct {
                         (context.current_level + 2) & ~@as(Level, 1);
 
                     if (new_level <= MAX_DEPTH) {
-                        try context.isolate_stack.append(i);
-                        try context.level_stack.append(context.current_level);
+                        try context.isolate_stack.append(context.allocator, i);
+                        try context.level_stack.append(context.allocator, context.current_level);
                         context.current_level = new_level;
                     }
                     levels[i] = context.current_level;
@@ -300,7 +304,7 @@ pub const BiDi = struct {
                     if (context.isolate_stack.items.len > 0) {
                         _ = context.isolate_stack.pop();
                         if (context.level_stack.items.len > 0) {
-                            context.current_level = context.level_stack.pop();
+                            context.current_level = context.level_stack.pop().?;
                         }
                     }
                     levels[i] = context.current_level;
@@ -354,8 +358,8 @@ pub const BiDi = struct {
 
     /// Create runs from resolved levels
     fn createRuns(self: Self, levels: []const Level) ![]Run {
-        var runs = std.ArrayList(Run).init(self.allocator);
-        defer runs.deinit();
+        var runs = std.ArrayList(Run){};
+        defer runs.deinit(self.allocator);
 
         if (levels.len == 0) {
             return try self.allocator.dupe(Run, &[_]Run{});
@@ -368,7 +372,7 @@ pub const BiDi = struct {
             if (level != current_level) {
                 // End of current run
                 const direction: Direction = if (current_level % 2 == 1) .RTL else .LTR;
-                try runs.append(Run{
+                try runs.append(self.allocator, Run{
                     .start = start,
                     .length = i - start,
                     .level = current_level,
@@ -382,7 +386,7 @@ pub const BiDi = struct {
 
         // Add final run
         const direction: Direction = if (current_level % 2 == 1) .RTL else .LTR;
-        try runs.append(Run{
+        try runs.append(self.allocator, Run{
             .start = start,
             .length = levels.len - start,
             .level = current_level,
