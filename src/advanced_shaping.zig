@@ -11,6 +11,12 @@ const complex_script = @import("complex_script.zig");
 const shaping = @import("shaping.zig");
 const lib = @import("lib.zig");
 
+/// Get current time in milliseconds (replacement for removed std.time.milliTimestamp)
+fn getMilliTimestamp() i64 {
+    const ts = std.posix.clock_gettime(.REALTIME) catch return 0;
+    return @as(i64, ts.sec) * std.time.ms_per_s + @divTrunc(@as(i64, ts.nsec), std.time.ns_per_ms);
+}
+
 /// Arabic joining types from Unicode Standard
 pub const ArabicJoining = enum(u3) {
     /// Non-joining character
@@ -256,7 +262,7 @@ pub const ShapingCache = struct {
 
         try self.entries.put(key, CacheEntry{
             .glyphs = cached_glyphs,
-            .timestamp = std.time.milliTimestamp(),
+            .timestamp = getMilliTimestamp(),
         });
     }
 };
