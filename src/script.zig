@@ -206,7 +206,7 @@ pub const ScriptDetector = struct {
             return try self.allocator.dupe(ScriptRun, &[_]ScriptRun{});
         }
 
-        var runs = std.ArrayList(ScriptRun){};
+        var runs: std.ArrayList(ScriptRun) = .empty;
         defer runs.deinit(self.allocator);
 
         var start: usize = 0;

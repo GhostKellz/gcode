@@ -241,7 +241,7 @@ pub const TextShaper = struct {
 
     /// Shape text into positioned glyphs with ligature and kerning support
     pub fn shape(self: *Self, text: []const u8, font_metrics: FontMetrics) ![]Glyph {
-        var glyphs = std.ArrayList(Glyph){};
+        var glyphs: std.ArrayList(Glyph) = .empty;
         defer glyphs.deinit(self.allocator);
 
         // Step 1: Process ligatures if enabled
@@ -285,7 +285,7 @@ pub const TextShaper = struct {
 
     /// Process ligatures in text
     fn processLigatures(self: *Self, text: []const u8) ![]u8 {
-        var result = std.ArrayList(u8){};
+        var result: std.ArrayList(u8) = .empty;
         defer result.deinit(self.allocator);
 
         const ligatures = self.config.ligatures.custom_ligatures orelse &PROGRAMMING_LIGATURES;
@@ -373,7 +373,7 @@ pub const TextShaper = struct {
     pub fn findBreakPoints(self: *Self, text: []const u8, max_width: f32) ![]BreakPoint {
         _ = max_width;
 
-        var breaks = std.ArrayList(BreakPoint){};
+        var breaks: std.ArrayList(BreakPoint) = .empty;
         defer breaks.deinit(self.allocator);
 
         // Simple whitespace-based breaking for now
@@ -456,7 +456,7 @@ pub const TerminalShaper = struct {
         const runs = try bidi_processor.processText(text, base_direction);
         defer self.base_shaper.allocator.free(runs);
 
-        var all_glyphs = std.ArrayList(Glyph){};
+        var all_glyphs: std.ArrayList(Glyph) = .empty;
         defer all_glyphs.deinit(self.base_shaper.allocator);
 
         // Shape each BiDi run separately
@@ -484,7 +484,7 @@ pub const TerminalShaper = struct {
         var analyzer = complex_script.ComplexScriptAnalyzer.init(self.base_shaper.allocator);
 
         // Convert text to codepoints for analysis
-        var codepoints = std.ArrayList(u32){};
+        var codepoints: std.ArrayList(u32) = .empty;
         defer codepoints.deinit(self.base_shaper.allocator);
 
         var byte_offset: usize = 0;

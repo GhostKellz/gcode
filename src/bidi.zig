@@ -120,8 +120,8 @@ pub const BiDiContext = struct {
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
-            .level_stack = std.ArrayList(Level){},
-            .isolate_stack = std.ArrayList(usize){},
+            .level_stack = .empty,
+            .isolate_stack = .empty,
             .allocator = allocator,
         };
     }
@@ -358,7 +358,7 @@ pub const BiDi = struct {
 
     /// Create runs from resolved levels
     fn createRuns(self: Self, levels: []const Level) ![]Run {
-        var runs = std.ArrayList(Run){};
+        var runs: std.ArrayList(Run) = .empty;
         defer runs.deinit(self.allocator);
 
         if (levels.len == 0) {

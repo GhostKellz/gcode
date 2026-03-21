@@ -809,7 +809,7 @@ fn parseDecomposition(
     }
 
     var parts = std.mem.splitScalar(u8, data_slice, ' ');
-    var values = std.ArrayListUnmanaged(u21){};
+    var values: std.ArrayListUnmanaged(u21) = .empty;
     defer values.deinit(alloc);
 
     while (parts.next()) |part_raw| {
@@ -922,7 +922,7 @@ pub const UnicodeGeneratorContext = struct {
 };
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
 
     const alloc = gpa.allocator();
