@@ -383,6 +383,14 @@ pub const ComplexScriptAnalyzer = struct {
     }
 
     /// Calculate position within Indic syllable
+    /// Returns position code:
+    ///   0 = Base consonant (syllable start)
+    ///   1 = Pre-base element (repha, pre-base consonant)
+    ///   2 = Post-base consonant (after virama)
+    ///   3 = Dependent vowel/matra
+    ///   4 = Nukta or other modifier
+    ///   5 = Virama (halant)
+    ///   6 = Tone/stress mark
     fn calculateIndicSyllablePosition(
         self: Self,
         text: []const u32,
@@ -391,12 +399,33 @@ pub const ComplexScriptAnalyzer = struct {
     ) u8 {
         _ = self;
         _ = text;
-        _ = analyses;
-        _ = index;
 
-        // TODO: Implement Indic syllable analysis
-        // This requires complex state machine for different Indic scripts
-        return 0;
+        const current = &analyses[index];
+        const cat = current.indic_category orelse return 0;
+
+        // Determine position based on category and context
+        return switch (cat) {
+            .consonant => blk: {
+                // Check if this consonant follows a virama (making it post-base)
+                if (index > 0) {
+                    if (analyses[index - 1].indic_category) |prev_cat| {
+                        if (prev_cat == .virama) {
+                            break :blk 2; // Post-base consonant
+                        }
+                    }
+                }
+                break :blk 0; // Base consonant
+            },
+            .consonant_preceding_repha, .consonant_prefixed => 1, // Pre-base
+            .consonant_succeeding_repha, .consonant_with_stacker => 2, // Post-base
+            .consonant_dead => 2, // Dead consonant (post-virama)
+            .vowel_dependent => 3, // Matra
+            .vowel_independent => 0, // Independent vowel starts syllable
+            .nukta => 4, // Nukta modifies consonant
+            .virama, .invisible_stacker => 5, // Virama/halant
+            .tone_mark, .stress_mark, .cantillation_mark => 6, // Tone marks
+            .number, .symbol, .other => 0, // Non-syllabic
+        };
     }
 };
 

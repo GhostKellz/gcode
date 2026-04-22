@@ -9,6 +9,14 @@
 const std = @import("std");
 const gcode = @import("gcode");
 
+/// Get current time in nanoseconds using linux syscall
+fn nanoTimestamp() i128 {
+    var ts: std.os.linux.timespec = undefined;
+    const rc = std.os.linux.clock_gettime(.MONOTONIC, &ts);
+    if (rc != 0) return 0;
+    return @as(i128, ts.sec) * std.time.ns_per_s + ts.nsec;
+}
+
 pub fn main() !void {
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
@@ -124,11 +132,10 @@ pub const TrackingAllocator = struct {
         self.backing_allocator.rawFree(buf, buf_align, ret_addr);
     }
 
-    fn noRemap(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, old_len: usize, new_len: usize, ret_addr: usize) ?[*]u8 {
+    fn noRemap(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
         _ = ctx;
         _ = buf;
         _ = buf_align;
-        _ = old_len;
         _ = new_len;
         _ = ret_addr;
         return null;
@@ -209,14 +216,14 @@ pub const BenchmarkRunner = struct {
         }
 
         // Timed runs
-        const start_time = std.time.nanoTimestamp();
+        const start_time = nanoTimestamp();
 
         for (0..self.config.iterations) |_| {
             const glyphs = try shaper.shape(test_text, font_metrics);
             defer self.tracking_allocator.allocator().free(glyphs);
         }
 
-        const end_time = std.time.nanoTimestamp();
+        const end_time = nanoTimestamp();
         const total_ns = @as(f64, @floatFromInt(end_time - start_time));
         const total_chars = @as(f64, @floatFromInt(test_text.len * self.config.iterations));
 
@@ -245,14 +252,14 @@ pub const BenchmarkRunner = struct {
         }
 
         // Timed runs
-        const start_time = std.time.nanoTimestamp();
+        const start_time = nanoTimestamp();
 
         for (0..self.config.iterations) |_| {
             const glyphs = try advanced_shaper.shapeAdvanced(test_text, font_metrics);
             defer self.tracking_allocator.allocator().free(glyphs);
         }
 
-        const end_time = std.time.nanoTimestamp();
+        const end_time = nanoTimestamp();
         const total_ns = @as(f64, @floatFromInt(end_time - start_time));
         const total_chars = @as(f64, @floatFromInt(test_text.len * self.config.iterations));
 
@@ -282,14 +289,14 @@ pub const BenchmarkRunner = struct {
         }
 
         // Timed runs
-        const start_time = std.time.nanoTimestamp();
+        const start_time = nanoTimestamp();
 
         for (0..self.config.iterations) |_| {
             const glyphs = try advanced_shaper.shapeAdvanced(test_text, font_metrics);
             defer self.tracking_allocator.allocator().free(glyphs);
         }
 
-        const end_time = std.time.nanoTimestamp();
+        const end_time = nanoTimestamp();
         const total_ns = @as(f64, @floatFromInt(end_time - start_time));
         const total_chars = @as(f64, @floatFromInt(test_text.len * self.config.iterations));
 
@@ -388,37 +395,37 @@ pub const BenchmarkRunner = struct {
 
     /// Print benchmark results
     pub fn printResults(results: BenchmarkResults) void {
-        std.debug.print("\n=== gcode Performance Benchmark Results ===\n\n");
+        std.debug.print("\n=== gcode Performance Benchmark Results ===\n\n", .{});
 
-        std.debug.print("Performance Metrics:\n");
-        std.debug.print("  Latin text:    {d:>6.1f} ns/char {s}\n", .{
+        std.debug.print("Performance Metrics:\n", .{});
+        std.debug.print("  Latin text:    {d:>6.1} ns/char {s}\n", .{
             results.latin_ns_per_char,
             if (results.meets_latin_target) "✅" else "❌"
         });
-        std.debug.print("  ASCII text:    {d:>6.1f} ns/char\n", .{results.ascii_ns_per_char});
-        std.debug.print("  Complex text:  {d:>6.1f} ns/char\n", .{results.complex_ns_per_char});
+        std.debug.print("  ASCII text:    {d:>6.1} ns/char\n", .{results.ascii_ns_per_char});
+        std.debug.print("  Complex text:  {d:>6.1} ns/char\n", .{results.complex_ns_per_char});
 
-        std.debug.print("\nMemory Metrics:\n");
-        std.debug.print("  Peak memory:   {d:>6.1f} MB\n", .{results.peak_memory_mb});
-        std.debug.print("  Cache memory:  {d:>6.1f} KB {s}\n", .{
+        std.debug.print("\nMemory Metrics:\n", .{});
+        std.debug.print("  Peak memory:   {d:>6.1} MB\n", .{results.peak_memory_mb});
+        std.debug.print("  Cache memory:  {d:>6.1} KB {s}\n", .{
             results.cache_memory_kb,
             if (results.meets_memory_target) "✅" else "❌"
         });
 
-        std.debug.print("\nCache Metrics:\n");
-        std.debug.print("  Hit rate:      {d:>6.1%} {s}\n", .{
-            results.cache_hit_rate,
+        std.debug.print("\nCache Metrics:\n", .{});
+        std.debug.print("  Hit rate:      {d:>6.1}% {s}\n", .{
+            results.cache_hit_rate * 100,
             if (results.meets_cache_target) "✅" else "❌"
         });
         std.debug.print("  Cache entries: {d:>6}\n", .{results.cache_entries});
 
-        std.debug.print("\nBinary Size:\n");
-        std.debug.print("  Estimated:     {d:>6.1f} KB {s}\n", .{
+        std.debug.print("\nBinary Size:\n", .{});
+        std.debug.print("  Estimated:     {d:>6.1} KB {s}\n", .{
             results.binary_size_kb,
             if (results.meets_size_target) "✅" else "❌"
         });
 
-        std.debug.print("\nPhase 4 Targets:\n");
+        std.debug.print("\nPhase 4 Targets:\n", .{});
         std.debug.print("  < 50ns/char:   {s}\n", .{if (results.meets_latin_target) "✅ PASS" else "❌ FAIL"});
         std.debug.print("  < 1MB cache:   {s}\n", .{if (results.meets_memory_target) "✅ PASS" else "❌ FAIL"});
         std.debug.print("  < 200KB size:  {s}\n", .{if (results.meets_size_target) "✅ PASS" else "❌ FAIL"});
@@ -446,7 +453,7 @@ test "benchmark runner initialization" {
         .analyze_cache = true,
     };
 
-    var runner = BenchmarkRunner.init(allocator, config);
+    const runner = BenchmarkRunner.init(allocator, config);
 
     // Test that we can create the runner
     try testing.expect(runner.config.iterations == 10);

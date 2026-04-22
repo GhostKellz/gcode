@@ -279,11 +279,13 @@ pub const BiDi = struct {
                 .FSI => {
                     // First Strong Isolate - determine direction from following text
                     var dir: Direction = .LTR;
-                    for (text[i + 1 ..]) |next_cp| {
-                        const next_class = getBiDiClass(next_cp);
-                        if (next_class.isStrong()) {
-                            dir = if (next_class.isRTL()) .RTL else .LTR;
-                            break;
+                    if (i + 1 < text.len) {
+                        for (text[i + 1 ..]) |next_cp| {
+                            const next_class = getBiDiClass(next_cp);
+                            if (next_class.isStrong()) {
+                                dir = if (next_class.isRTL()) .RTL else .LTR;
+                                break;
+                            }
                         }
                     }
 
@@ -318,20 +320,154 @@ pub const BiDi = struct {
 
     /// Resolve weak types (Rules W1-W7)
     fn resolveWeakTypes(self: Self, text: []const u32, levels: []Level) !void {
-        _ = self;
-        _ = text;
-        _ = levels;
-        // TODO: Implement weak type resolution
-        // This handles European numbers, Arabic numbers, separators, etc.
+        if (text.len == 0) return;
+
+        // Allocate resolved types array
+        const types = try self.allocator.alloc(BiDiClass, text.len);
+        defer self.allocator.free(types);
+
+        // Initialize with original BiDi classes
+        for (text, 0..) |cp, i| {
+            types[i] = getBiDiClass(cp);
+        }
+
+        // W1: NSM gets type of previous character (or embedding direction at start)
+        var prev_type: BiDiClass = if (levels[0] % 2 == 0) .L else .R;
+        for (types) |*t| {
+            if (t.* == .NSM) {
+                t.* = prev_type;
+            } else {
+                prev_type = t.*;
+            }
+        }
+
+        // W2: EN after AL becomes AN
+        var last_strong: BiDiClass = if (levels[0] % 2 == 0) .L else .R;
+        for (types) |*t| {
+            if (t.* == .L or t.* == .R or t.* == .AL) {
+                last_strong = t.*;
+            } else if (t.* == .EN and last_strong == .AL) {
+                t.* = .AN;
+            }
+        }
+
+        // W3: AL becomes R
+        for (types) |*t| {
+            if (t.* == .AL) t.* = .R;
+        }
+
+        // W4: Single ES between EN becomes EN; Single CS between same number type
+        if (types.len >= 3) {
+            for (1..types.len - 1) |i| {
+                if (types[i] == .ES and types[i - 1] == .EN and types[i + 1] == .EN) {
+                    types[i] = .EN;
+                } else if (types[i] == .CS) {
+                    if (types[i - 1] == .EN and types[i + 1] == .EN) {
+                        types[i] = .EN;
+                    } else if (types[i - 1] == .AN and types[i + 1] == .AN) {
+                        types[i] = .AN;
+                    }
+                }
+            }
+        }
+
+        // W5: ET adjacent to EN becomes EN
+        for (types, 0..) |*t, i| {
+            if (t.* == .ET) {
+                // Check left
+                if (i > 0 and types[i - 1] == .EN) {
+                    t.* = .EN;
+                    continue;
+                }
+                // Check right
+                if (i + 1 < types.len and types[i + 1] == .EN) {
+                    t.* = .EN;
+                }
+            }
+        }
+
+        // W6: ES, ET, CS become ON
+        for (types) |*t| {
+            if (t.* == .ES or t.* == .ET or t.* == .CS) {
+                t.* = .ON;
+            }
+        }
+
+        // W7: EN with L context becomes L
+        last_strong = if (levels[0] % 2 == 0) .L else .R;
+        for (types) |*t| {
+            if (t.* == .L or t.* == .R) {
+                last_strong = t.*;
+            } else if (t.* == .EN and last_strong == .L) {
+                t.* = .L;
+            }
+        }
     }
 
     /// Resolve neutral types (Rules N1-N2)
     fn resolveNeutralTypes(self: Self, text: []const u32, levels: []Level) !void {
-        _ = self;
-        _ = text;
-        _ = levels;
-        // TODO: Implement neutral type resolution
-        // This handles whitespace, punctuation, symbols, etc.
+        if (text.len == 0) return;
+
+        // Allocate resolved types array
+        const types = try self.allocator.alloc(BiDiClass, text.len);
+        defer self.allocator.free(types);
+
+        // Initialize with BiDi classes (after weak type resolution would have run)
+        for (text, 0..) |cp, i| {
+            types[i] = getBiDiClass(cp);
+        }
+
+        // N1 & N2: Resolve neutrals based on surrounding strong types
+        var i: usize = 0;
+        while (i < types.len) {
+            if (types[i].isNeutral()) {
+                // Find the run of neutrals
+                const start = i;
+                while (i < types.len and types[i].isNeutral()) : (i += 1) {}
+                const end = i;
+
+                // Get preceding strong type (or embedding direction)
+                const preceding: BiDiClass = blk: {
+                    if (start > 0) {
+                        var j = start - 1;
+                        while (true) {
+                            if (types[j].isStrong()) break :blk types[j];
+                            if (j == 0) break;
+                            j -= 1;
+                        }
+                    }
+                    break :blk if (levels[start] % 2 == 0) .L else .R;
+                };
+
+                // Get following strong type (or embedding direction)
+                const following: BiDiClass = blk: {
+                    for (types[end..]) |t| {
+                        if (t.isStrong()) break :blk t;
+                    }
+                    break :blk if (levels[start] % 2 == 0) .L else .R;
+                };
+
+                // N1: If surrounding strong types match, neutrals get that type
+                // N2: Otherwise, neutrals get embedding direction
+                const resolved: BiDiClass = if (preceding == following and preceding.isStrong())
+                    preceding
+                else if (levels[start] % 2 == 0)
+                    .L
+                else
+                    .R;
+
+                // Apply resolved type (affects implicit level resolution)
+                for (start..end) |j| {
+                    if (resolved == .R and levels[j] % 2 == 0) {
+                        levels[j] += 1;
+                    } else if (resolved == .L and levels[j] % 2 == 1) {
+                        levels[j] += 1;
+                    }
+                }
+            } else {
+                i += 1;
+            }
+        }
     }
 
     /// Resolve implicit levels (Rules I1-I2)

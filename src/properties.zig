@@ -136,31 +136,18 @@ pub const GeneratorContext = struct {
         // Default properties - will be overridden by data generator
         var props = Properties{
             .width = 1, // Default to narrow
-            .grapheme_boundary_class = .other,
+            .grapheme_boundary_class = .invalid,
         };
 
         // Basic width detection (will be enhanced by Unicode data)
         if (cp <= 0x7F) {
-            // ASCII fast path
+            // ASCII fast path - control characters are zero-width
             if (cp < 0x20 or cp == 0x7F) {
-                props.width = 0; // Control characters
-            } else if (cp >= 'a' and cp <= 'z') {
-                props.grapheme_boundary_class = .letter;
-            } else if (cp >= 'A' and cp <= 'Z') {
-                props.grapheme_boundary_class = .letter;
-            } else if (cp >= '0' and cp <= '9') {
-                props.grapheme_boundary_class = .number;
-            } else if ((cp >= 0x20 and cp <= 0x2F) or (cp >= 0x3A and cp <= 0x40) or
-                (cp >= 0x5B and cp <= 0x60) or (cp >= 0x7B and cp <= 0x7E))
-            {
-                props.grapheme_boundary_class = .punctuation;
-            } else if (cp == 0x20 or cp == 0x09 or cp == 0x0A or cp == 0x0D) {
-                props.grapheme_boundary_class = .separator;
+                props.width = 0;
             }
+            // All other ASCII characters use default grapheme class (invalid)
+            // Real values come from generated Unicode tables
         }
-
-        // TODO: This will be populated by the Unicode data generator
-        // For now, return defaults
 
         return props;
     }

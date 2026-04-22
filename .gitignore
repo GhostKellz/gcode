@@ -1,10 +1,22 @@
+# Build artifacts
 .zig-cache/
 zig-out/
+zig-pkg/
 *.o
 *.exe
-/archive 
-archive/
+tasks/
+# Generated tools (build these with zig build)
+/fetch_unicode
+/generator
+/lut
+/normalize
+
+# Editor and IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Project-specific ignores
+/archive/
 CLAUDE.md
-.zig-cache/ 
-TODO.md 
-ROADMAP.md

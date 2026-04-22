@@ -186,7 +186,7 @@ pub fn isControlCharacter(cp: u21) bool {
 }
 
 pub fn isDisplayableInTerminal(cp: u21) bool {
-    return !isControlCharacter(cp) and cp != 0x7F;
+    return !isControlCharacter(cp);
 }
 
 // Cursor movement helpers

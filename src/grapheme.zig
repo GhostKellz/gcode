@@ -208,25 +208,68 @@ pub const ReverseGraphemeIterator = struct {
 
     /// Get the previous grapheme cluster.
     /// Returns null when iteration is complete.
-    /// Note: This is a simplified implementation for terminal use.
     pub fn prev(self: *ReverseGraphemeIterator) ?[]const u8 {
         if (self.index == 0) return null;
 
-        // For terminal use, we can simplify: just go back one codepoint
-        // This works for most cases since combining characters are rare in terminals
         const end = self.index;
-        var start = end;
 
-        // Find the previous valid UTF-8 sequence
-        while (start > 0) {
-            start -= 1;
-            if (std.unicode.utf8ValidateSlice(self.bytes[start..end])) {
-                break;
-            }
+        // Find the start of the previous codepoint
+        var cp_start = end - 1;
+        while (cp_start > 0 and !isUtf8LeadByte(self.bytes[cp_start])) {
+            cp_start -= 1;
         }
 
-        self.index = start;
-        return self.bytes[start..end];
+        // Decode the last codepoint
+        const cp_len = std.unicode.utf8ByteSequenceLength(self.bytes[cp_start]) catch {
+            self.index = cp_start;
+            return self.bytes[cp_start..end];
+        };
+
+        if (cp_start + cp_len > end) {
+            // Invalid UTF-8, return single byte
+            self.index = end - 1;
+            return self.bytes[end - 1 .. end];
+        }
+
+        var last_cp = std.unicode.utf8Decode(self.bytes[cp_start .. cp_start + cp_len]) catch {
+            self.index = cp_start;
+            return self.bytes[cp_start..end];
+        };
+
+        // Now scan backwards to find the grapheme cluster boundary
+        var cluster_start = cp_start;
+        var state = BreakState{};
+
+        while (cluster_start > 0) {
+            // Find the previous codepoint
+            var prev_start = cluster_start - 1;
+            while (prev_start > 0 and !isUtf8LeadByte(self.bytes[prev_start])) {
+                prev_start -= 1;
+            }
+
+            const prev_len = std.unicode.utf8ByteSequenceLength(self.bytes[prev_start]) catch break;
+            if (prev_start + prev_len > cluster_start) break;
+
+            const prev_cp = std.unicode.utf8Decode(self.bytes[prev_start .. prev_start + prev_len]) catch break;
+
+            // Check if there's a grapheme break between prev_cp and last_cp
+            if (graphemeBreak(prev_cp, last_cp, &state)) {
+                // Break found, cluster starts at cluster_start
+                break;
+            }
+
+            // No break, extend cluster backwards
+            cluster_start = prev_start;
+            last_cp = prev_cp;
+        }
+
+        self.index = cluster_start;
+        return self.bytes[cluster_start..end];
+    }
+
+    fn isUtf8LeadByte(byte: u8) bool {
+        // UTF-8 lead bytes are either ASCII (0x00-0x7F) or start with 11xxxxxx
+        return (byte & 0x80) == 0 or (byte & 0xC0) == 0xC0;
     }
 };
 
@@ -244,5 +287,77 @@ test "grapheme iterator" {
         try testing.expect(iter.next() == null);
     }
 
-    // TODO: Add more comprehensive tests once tables are generated
+    // Combining characters (e + combining acute = grapheme cluster)
+    {
+        var iter = GraphemeIterator.init("e\u{0301}"); // e + combining acute
+        const cluster = iter.next();
+        try testing.expect(cluster != null);
+        try testing.expect(cluster.?.len == 3); // 'e' (1 byte) + combining acute (2 bytes)
+        try testing.expect(iter.next() == null);
+    }
+
+    // Multiple combining marks
+    {
+        var iter = GraphemeIterator.init("a\u{0300}\u{0301}"); // a + grave + acute
+        const cluster = iter.next();
+        try testing.expect(cluster != null);
+        try testing.expect(iter.next() == null); // All marks cluster with base
+    }
+
+    // Emoji (single codepoint)
+    {
+        var iter = GraphemeIterator.init("\u{1F600}"); // 😀
+        try testing.expect(iter.next() != null);
+        try testing.expect(iter.next() == null);
+    }
+
+    // ZWJ sequence (simple: emoji + ZWJ + emoji)
+    // Note: Complex ZWJ sequences like family emoji require full Unicode data tables
+    // to have proper extended_pictographic classification for all emoji
+    {
+        // Test that ZWJ doesn't cause a break before the next character (GB9)
+        var iter = GraphemeIterator.init("a\u{200D}b"); // a + ZWJ + b
+        const first = iter.next();
+        try testing.expect(first != null);
+        // ZWJ clusters with preceding character per GB9
+        try testing.expect(first.?.len > 1);
+    }
+
+    // Regional indicator pair (flag)
+    {
+        var iter = GraphemeIterator.init("\u{1F1FA}\u{1F1F8}"); // US flag
+        const cluster = iter.next();
+        try testing.expect(cluster != null);
+        try testing.expect(iter.next() == null); // Flag is single grapheme
+    }
+
+    // Korean Hangul syllable
+    {
+        var iter = GraphemeIterator.init("\u{AC00}"); // 가 (precomposed Hangul)
+        try testing.expect(iter.next() != null);
+        try testing.expect(iter.next() == null);
+    }
+
+    // Mixed content
+    {
+        var iter = GraphemeIterator.init("Hi\u{1F44B}"); // Hi👋
+        try testing.expect(std.mem.eql(u8, iter.next().?, "H"));
+        try testing.expect(std.mem.eql(u8, iter.next().?, "i"));
+        try testing.expect(iter.next() != null); // wave emoji
+        try testing.expect(iter.next() == null);
+    }
+
+    // Empty string
+    {
+        var iter = GraphemeIterator.init("");
+        try testing.expect(iter.next() == null);
+    }
+
+    // Emoji with skin tone modifier
+    {
+        var iter = GraphemeIterator.init("\u{1F44B}\u{1F3FD}"); // 👋🏽
+        const cluster = iter.next();
+        try testing.expect(cluster != null);
+        try testing.expect(iter.next() == null); // Should cluster together
+    }
 }

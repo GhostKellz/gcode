@@ -1,16 +1,21 @@
-<div align="center">
+<p align="center">
   <img src="assets/icons/gcode-lib.png" alt="gcode logo" width="200">
+</p>
 
-  # gcode - Ghost Code Unicode Library
+<h1 align="center">gcode - Ghost Code Unicode Library</h1>
 
-  🚀 **The fastest, most efficient Unicode library optimized for terminal emulators**
+<p align="center">
+  <strong>The fastest, most efficient Unicode library optimized for terminal emulators</strong>
+</p>
 
-  [![Zig 0.16.0-dev](https://img.shields.io/badge/zig-0.16.0--dev-f7a41d?style=flat-square&logo=zig)](https://ziglang.org/)
-  [![Unicode 15.1](https://img.shields.io/badge/unicode-15.1-blue?style=flat-square)](https://unicode.org/)
-  [![Terminal Optimized](https://img.shields.io/badge/terminal-optimized-green?style=flat-square)](https://github.com/ghostkellz/gcode)
-  [![Performance](https://img.shields.io/badge/performance-blazing%20fast-red?style=flat-square)](https://github.com/ghostkellz/gcode#performance)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-</div>
+<p align="center">
+  <img src="https://img.shields.io/badge/Zig-0.17.0--dev-f7a41d?style=for-the-badge&logo=zig&logoColor=white" alt="Zig">
+  <img src="https://img.shields.io/badge/Unicode-15.1-5c5cff?style=for-the-badge&logo=unicode&logoColor=white" alt="Unicode">
+  <img src="https://img.shields.io/badge/Terminal-Optimized-00c853?style=for-the-badge&logo=windowsterminal&logoColor=white" alt="Terminal">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="MIT License">
+</p>
+
+---
 
 ## Overview
 
@@ -44,7 +49,7 @@ gcode is a cutting-edge Unicode processing library built specifically for termin
 - Control character classification
 
 **🛡️ Modern Design**
-- Built for Zig 0.16+ from day one
+- Built for Zig 0.17+ from day one
 - Memory-safe by design
 - Zero dependencies
 - Async-friendly APIs
@@ -154,7 +159,7 @@ const display_width = gcode.stringWidth("Hello 世界!");
 - [x] Extract Ghostshell Unicode system
 - [x] Create Unicode data generator framework
 - [x] Basic 3-level lookup table implementation
-- [x] Zig v0.16 compatibility
+- [x] Zig v0.17 compatibility
 - [x] Full Unicode data integration (UnicodeData.txt, EastAsianWidth.txt)
 - [x] Complete Unicode case conversion (uppercase/lowercase/titlecase)
 - [x] Unicode normalization (NFC/NFD/NFKC/NFKD)

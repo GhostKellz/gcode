@@ -11,10 +11,12 @@ const complex_script = @import("complex_script.zig");
 const shaping = @import("shaping.zig");
 const lib = @import("lib.zig");
 
-/// Get current time in milliseconds (replacement for removed std.time.milliTimestamp)
+/// Get current time in milliseconds
 fn getMilliTimestamp() i64 {
-    const ts = std.posix.clock_gettime(.REALTIME) catch return 0;
-    return @as(i64, ts.sec) * std.time.ms_per_s + @divTrunc(@as(i64, ts.nsec), std.time.ns_per_ms);
+    var ts: std.os.linux.timespec = undefined;
+    const rc = std.os.linux.clock_gettime(.REALTIME, &ts);
+    if (rc != 0) return 0;
+    return @as(i64, ts.sec) * std.time.ms_per_s + @divTrunc(ts.nsec, std.time.ns_per_ms);
 }
 
 /// Arabic joining types from Unicode Standard
@@ -123,21 +125,24 @@ pub const IndicSyllable = struct {
     /// Syllable boundary
     boundary: usize,
 
+    allocator: std.mem.Allocator,
+
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
-            .consonants = std.ArrayList(u21).init(allocator),
-            .vowels = std.ArrayList(u21).init(allocator),
-            .modifiers = std.ArrayList(u21).init(allocator),
+            .consonants = .empty,
+            .vowels = .empty,
+            .modifiers = .empty,
             .boundary = 0,
+            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.consonants.deinit();
-        self.vowels.deinit();
-        self.modifiers.deinit();
+        self.consonants.deinit(self.allocator);
+        self.vowels.deinit(self.allocator);
+        self.modifiers.deinit(self.allocator);
     }
 };
 
@@ -180,20 +185,24 @@ pub const EmojiSequence = struct {
     /// Color emoji presentation preference
     presentation: EmojiPresentation,
 
+    /// Allocator for the sequence
+    allocator: std.mem.Allocator,
+
     const Self = @This();
 
     pub fn init(allocator: std.mem.Allocator) Self {
         return .{
             .sequence_type = .single,
-            .codepoints = std.ArrayList(u21).init(allocator),
+            .codepoints = .empty,
             .display_width = 1,
             .is_color = false,
             .presentation = .default,
+            .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *Self) void {
-        self.codepoints.deinit();
+        self.codepoints.deinit(self.allocator);
     }
 };
 
@@ -302,7 +311,7 @@ pub const AdvancedShaper = struct {
 
         // Convert text to codepoints for script detection
         var codepoints = try std.ArrayList(u32).initCapacity(self.allocator, text.len);
-        defer codepoints.deinit();
+        defer codepoints.deinit(self.allocator);
 
         var iter = lib.codePointIterator(text);
         while (iter.next()) |cp| {
@@ -447,7 +456,7 @@ pub const AdvancedShaper = struct {
     /// Analyze Indic syllable structure
     fn analyzeIndicSyllables(self: *Self, text: []const u8) ![]IndicSyllable {
         var syllables = try std.ArrayList(IndicSyllable).initCapacity(self.allocator, 16);
-        defer syllables.deinit();
+        defer syllables.deinit(self.allocator);
 
         var current_syllable = IndicSyllable.init(self.allocator);
 
@@ -506,12 +515,13 @@ pub const AdvancedShaper = struct {
 
     /// Process emoji sequences
     fn processEmojiSequences(self: *Self, glyphs: []const shaping.Glyph) ![]shaping.Glyph {
-        var result = std.ArrayList(shaping.Glyph).init(self.allocator);
-        defer result.deinit();
+        var result: std.ArrayList(shaping.Glyph) = .empty;
+        defer result.deinit(self.allocator);
 
         var i: usize = 0;
         while (i < glyphs.len) {
-            const sequence = try self.detectEmojiSequence(glyphs[i..]);
+            var sequence = try self.detectEmojiSequence(glyphs[i..]);
+            defer sequence.deinit();
 
             if (sequence.codepoints.items.len > 1) {
                 // Combine multiple glyphs into one emoji sequence
@@ -526,8 +536,6 @@ pub const AdvancedShaper = struct {
                 try result.append(self.allocator, glyphs[i]);
                 i += 1;
             }
-
-            sequence.deinit();
         }
 
         return try self.allocator.dupe(shaping.Glyph, result.items);
