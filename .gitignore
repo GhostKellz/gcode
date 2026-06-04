@@ -18,5 +18,5 @@ tasks/
 *~
 
 # Project-specific ignores
-/archive/
+archive/
 CLAUDE.md

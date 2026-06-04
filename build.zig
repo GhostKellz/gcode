@@ -124,9 +124,7 @@ pub fn build(b: *std.Build) void {
 
     // This allows the user to pass arguments to the application in the build
     // command itself, like this: `zig build run -- arg1 arg2 etc`
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
+    run_cmd.addPassthruArgs();
 
     // Creates an executable that will run `test` blocks from the provided module.
     // Here `mod` needs to define a target, which is why earlier we made sure to
@@ -170,6 +168,21 @@ pub fn build(b: *std.Build) void {
     });
     const run_benchmark = b.addRunArtifact(benchmark_exe);
     benchmark_step.dependOn(&run_benchmark.step);
+
+    // Codegen step: regenerates src/unicode_tables.zig from the latest Unicode
+    // data files (downloaded via curl into ./unicode_data). This is run manually
+    // with `zig build gen` and is not part of the default build.
+    const gen_step = b.step("gen", "Regenerate Unicode lookup tables");
+    const gen_exe = b.addExecutable(.{
+        .name = "unicode-gen",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/codegen/generator.zig"),
+            .target = b.graph.host,
+            .optimize = optimize,
+        }),
+    });
+    const run_gen = b.addRunArtifact(gen_exe);
+    gen_step.dependOn(&run_gen.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //

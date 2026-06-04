@@ -257,7 +257,7 @@ pub const TextShaper = struct {
             const cp_len = std.unicode.utf8ByteSequenceLength(processed_text[byte_offset]) catch 1;
             if (byte_offset + cp_len > processed_text.len) break;
 
-            const codepoint = std.unicode.utf8Decode(processed_text[byte_offset..byte_offset + cp_len]) catch 0;
+            const codepoint = std.unicode.utf8Decode(processed_text[byte_offset .. byte_offset + cp_len]) catch 0;
 
             // Create a glyph for this codepoint
             const glyph = Glyph{
@@ -332,7 +332,6 @@ pub const TextShaper = struct {
 
     /// Apply kerning adjustments to glyphs
     fn applyKerning(self: *Self, glyphs: []Glyph, font_metrics: FontMetrics) !void {
-
         if (glyphs.len < 2) return;
 
         for (0..glyphs.len - 1) |i| {
@@ -382,7 +381,7 @@ pub const TextShaper = struct {
             const cp_len = std.unicode.utf8ByteSequenceLength(text[byte_offset]) catch 1;
             if (byte_offset + cp_len > text.len) break;
 
-            const codepoint = std.unicode.utf8Decode(text[byte_offset..byte_offset + cp_len]) catch 0;
+            const codepoint = std.unicode.utf8Decode(text[byte_offset .. byte_offset + cp_len]) catch 0;
 
             if (std.ascii.isWhitespace(@intCast(codepoint))) {
                 try breaks.append(self.allocator, BreakPoint{
@@ -461,7 +460,7 @@ pub const TerminalShaper = struct {
 
         // Shape each BiDi run separately
         for (runs) |run| {
-            const run_text = text[run.start..run.start + run.length];
+            const run_text = text[run.start .. run.start + run.length];
             const run_glyphs = try self.base_shaper.shape(run_text, font_metrics);
             defer self.base_shaper.allocator.free(run_glyphs);
 
@@ -492,7 +491,7 @@ pub const TerminalShaper = struct {
             const cp_len = std.unicode.utf8ByteSequenceLength(text[byte_offset]) catch 1;
             if (byte_offset + cp_len > text.len) break;
 
-            const codepoint = std.unicode.utf8Decode(text[byte_offset..byte_offset + cp_len]) catch 0;
+            const codepoint = std.unicode.utf8Decode(text[byte_offset .. byte_offset + cp_len]) catch 0;
             try codepoints.append(self.base_shaper.allocator, codepoint);
             byte_offset += cp_len;
         }
@@ -547,7 +546,7 @@ pub const TerminalShaper = struct {
         var char_index: usize = 0;
 
         for (runs) |run| {
-            const run_text = text[run.start..run.start + run.length];
+            const run_text = text[run.start .. run.start + run.length];
             const run_glyphs = try self.base_shaper.shape(run_text, font_metrics);
             defer self.base_shaper.allocator.free(run_glyphs);
 
@@ -608,7 +607,7 @@ pub const TerminalShaper = struct {
         for (runs) |run| {
             if (logical_offset >= run.start and logical_offset < run.start + run.length) {
                 // Target position is in this run
-                const run_text = text[run.start..run.start + run.length];
+                const run_text = text[run.start .. run.start + run.length];
                 const run_glyphs = try self.base_shaper.shape(run_text, font_metrics);
                 defer self.base_shaper.allocator.free(run_glyphs);
 
@@ -623,7 +622,8 @@ pub const TerminalShaper = struct {
                         const glyph = run_glyphs[glyph_idx];
 
                         if (glyph.byte_offset <= offset_within_run and
-                            offset_within_run < glyph.byte_offset + glyph.byte_length) {
+                            offset_within_run < glyph.byte_offset + glyph.byte_length)
+                        {
                             // Found the glyph
                             return CursorPos{
                                 .visual_x = visual_x + run_visual_x,
@@ -637,7 +637,8 @@ pub const TerminalShaper = struct {
                 } else { // LTR run
                     for (run_glyphs) |glyph| {
                         if (glyph.byte_offset <= offset_within_run and
-                            offset_within_run < glyph.byte_offset + glyph.byte_length) {
+                            offset_within_run < glyph.byte_offset + glyph.byte_length)
+                        {
                             // Found the glyph
                             return CursorPos{
                                 .visual_x = visual_x + run_visual_x,
@@ -659,7 +660,7 @@ pub const TerminalShaper = struct {
             }
 
             // Calculate visual width of this run
-            const run_text = text[run.start..run.start + run.length];
+            const run_text = text[run.start .. run.start + run.length];
             const run_glyphs = try self.base_shaper.shape(run_text, font_metrics);
             defer self.base_shaper.allocator.free(run_glyphs);
 

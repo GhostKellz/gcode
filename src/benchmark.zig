@@ -68,10 +68,10 @@ pub const BenchmarkResults = struct {
     binary_size_kb: f64,
 
     /// Success flags for targets
-    meets_latin_target: bool,     // < 50ns per char
-    meets_memory_target: bool,    // < 1MB cache
-    meets_size_target: bool,      // < 200KB binary
-    meets_cache_target: bool,     // > 95% hit rate
+    meets_latin_target: bool, // < 50ns per char
+    meets_memory_target: bool, // < 1MB cache
+    meets_size_target: bool, // < 200KB binary
+    meets_cache_target: bool, // > 95% hit rate
 };
 
 /// Memory tracking allocator
@@ -196,7 +196,7 @@ pub const BenchmarkRunner = struct {
     /// Benchmark Latin text shaping performance
     fn benchmarkLatinText(self: *Self) !f64 {
         const test_text = "The quick brown fox jumps over the lazy dog. " ++
-                         "This is a sample text for benchmarking Latin script performance.";
+            "This is a sample text for benchmarking Latin script performance.";
 
         var shaper = gcode.TextShaper.init(self.tracking_allocator.allocator());
         defer shaper.deinit();
@@ -320,6 +320,15 @@ pub const BenchmarkRunner = struct {
         self.tracking_allocator.peak_bytes = 0;
         self.tracking_allocator.bytes_allocated = 0;
 
+        // A long, mostly-ASCII string to exercise the shaping cache.
+        const long_text = comptime blk: {
+            const prefix = "Long text: ";
+            var buf: [prefix.len + 1000]u8 = undefined;
+            @memcpy(buf[0..prefix.len], prefix);
+            @memset(buf[prefix.len..], 'A');
+            break :blk buf;
+        };
+
         // Test with various text samples to fill cache
         const test_texts = [_][]const u8{
             "Simple Latin text for testing.",
@@ -327,7 +336,7 @@ pub const BenchmarkRunner = struct {
             "Emoji: 🌍👨‍💻🏳️‍🌈",
             "Mixed: Hello 世界 🌟",
             "Code: fn main() -> i32 { return 0; }",
-            "Long text: " ++ "A" ** 1000,
+            &long_text,
         };
 
         for (test_texts) |text| {
@@ -398,32 +407,20 @@ pub const BenchmarkRunner = struct {
         std.debug.print("\n=== gcode Performance Benchmark Results ===\n\n", .{});
 
         std.debug.print("Performance Metrics:\n", .{});
-        std.debug.print("  Latin text:    {d:>6.1} ns/char {s}\n", .{
-            results.latin_ns_per_char,
-            if (results.meets_latin_target) "✅" else "❌"
-        });
+        std.debug.print("  Latin text:    {d:>6.1} ns/char {s}\n", .{ results.latin_ns_per_char, if (results.meets_latin_target) "✅" else "❌" });
         std.debug.print("  ASCII text:    {d:>6.1} ns/char\n", .{results.ascii_ns_per_char});
         std.debug.print("  Complex text:  {d:>6.1} ns/char\n", .{results.complex_ns_per_char});
 
         std.debug.print("\nMemory Metrics:\n", .{});
         std.debug.print("  Peak memory:   {d:>6.1} MB\n", .{results.peak_memory_mb});
-        std.debug.print("  Cache memory:  {d:>6.1} KB {s}\n", .{
-            results.cache_memory_kb,
-            if (results.meets_memory_target) "✅" else "❌"
-        });
+        std.debug.print("  Cache memory:  {d:>6.1} KB {s}\n", .{ results.cache_memory_kb, if (results.meets_memory_target) "✅" else "❌" });
 
         std.debug.print("\nCache Metrics:\n", .{});
-        std.debug.print("  Hit rate:      {d:>6.1}% {s}\n", .{
-            results.cache_hit_rate * 100,
-            if (results.meets_cache_target) "✅" else "❌"
-        });
+        std.debug.print("  Hit rate:      {d:>6.1}% {s}\n", .{ results.cache_hit_rate * 100, if (results.meets_cache_target) "✅" else "❌" });
         std.debug.print("  Cache entries: {d:>6}\n", .{results.cache_entries});
 
         std.debug.print("\nBinary Size:\n", .{});
-        std.debug.print("  Estimated:     {d:>6.1} KB {s}\n", .{
-            results.binary_size_kb,
-            if (results.meets_size_target) "✅" else "❌"
-        });
+        std.debug.print("  Estimated:     {d:>6.1} KB {s}\n", .{ results.binary_size_kb, if (results.meets_size_target) "✅" else "❌" });
 
         std.debug.print("\nPhase 4 Targets:\n", .{});
         std.debug.print("  < 50ns/char:   {s}\n", .{if (results.meets_latin_target) "✅ PASS" else "❌ FAIL"});
@@ -432,13 +429,11 @@ pub const BenchmarkRunner = struct {
         std.debug.print("  > 95% cache:   {s}\n", .{if (results.meets_cache_target) "✅ PASS" else "❌ FAIL"});
 
         const all_targets_met = results.meets_latin_target and
-                               results.meets_memory_target and
-                               results.meets_size_target and
-                               results.meets_cache_target;
+            results.meets_memory_target and
+            results.meets_size_target and
+            results.meets_cache_target;
 
-        std.debug.print("\nOverall: {s}\n", .{
-            if (all_targets_met) "🎉 ALL PHASE 4 TARGETS MET!" else "⚠️  Some targets need work"
-        });
+        std.debug.print("\nOverall: {s}\n", .{if (all_targets_met) "🎉 ALL PHASE 4 TARGETS MET!" else "⚠️  Some targets need work"});
     }
 };
 

@@ -48,7 +48,7 @@ pub const ComplexScriptCategory = enum {
 
             .Thai, .Lao, .Myanmar, .Khmer => .southeast_asian,
 
-            .Tibetan, .Ethiopian => .other_complex,
+            .Tibetan, .Ethiopic => .other_complex,
 
             else => .simple,
         };
@@ -89,9 +89,9 @@ pub const ArabicJoiningType = enum(u3) {
 /// Arabic contextual forms
 pub const ArabicForm = enum {
     isolated, // Character standing alone
-    initial,  // Character at beginning of word
-    medial,   // Character in middle of word
-    final,    // Character at end of word
+    initial, // Character at beginning of word
+    medial, // Character in middle of word
+    final, // Character at end of word
 };
 
 /// Indic script categories for syllable formation
@@ -128,8 +128,8 @@ pub const IndicCategory = enum(u5) {
 
 /// CJK character width classification for terminals
 pub const CJKWidth = enum(u2) {
-    narrow,    // Half-width (1 terminal cell)
-    wide,      // Full-width (2 terminal cells)
+    narrow, // Half-width (1 terminal cell)
+    wide, // Full-width (2 terminal cells)
     ambiguous, // Context-dependent width
 };
 
@@ -181,8 +181,8 @@ pub const ComplexScriptAnalysis = struct {
     pub fn getShapingPriority(self: ComplexScriptAnalysis) u8 {
         return switch (self.category) {
             .joining => 3, // Arabic joining is critical
-            .indic => 2,   // Indic syllables are complex
-            .cjk => 1,     // CJK needs width handling
+            .indic => 2, // Indic syllables are complex
+            .cjk => 1, // CJK needs width handling
             .southeast_asian => 2, // Line breaking is important
             .other_complex => 1,
             .simple => 0,
@@ -202,7 +202,6 @@ pub const ComplexScriptAnalyzer = struct {
 
     /// Analyze a single codepoint for complex script properties
     pub fn analyzeCodepoint(self: Self, cp: u32) ComplexScriptAnalysis {
-
         const char_script = script.getScript(cp);
         const category = ComplexScriptCategory.fromScript(char_script);
 
@@ -483,7 +482,6 @@ fn isIdeograph(cp: u32) bool {
 }
 
 /// Terminal-specific utilities
-
 /// Get recommended line breaking behavior for complex scripts
 pub fn getLineBreakBehavior(analysis: ComplexScriptAnalysis) enum {
     always_break,
@@ -494,8 +492,8 @@ pub fn getLineBreakBehavior(analysis: ComplexScriptAnalysis) enum {
     return switch (analysis.category) {
         .simple => .always_break,
         .joining => .contextual_break, // Don't break Arabic words
-        .indic => .never_break,        // Don't break syllables
-        .cjk => .always_break,         // Can break between any CJK chars
+        .indic => .never_break, // Don't break syllables
+        .cjk => .always_break, // Can break between any CJK chars
         .southeast_asian => .dictionary_break, // Need dictionary for Thai/Lao
         .other_complex => .contextual_break,
     };
@@ -511,8 +509,8 @@ pub fn getCursorGranularity(analysis: ComplexScriptAnalysis) enum {
     return switch (analysis.category) {
         .simple => .character,
         .joining => .character, // Arabic cursor moves by character
-        .indic => .cluster,     // Indic cursor moves by grapheme cluster
-        .cjk => .character,     // CJK cursor moves by character
+        .indic => .cluster, // Indic cursor moves by grapheme cluster
+        .cjk => .character, // CJK cursor moves by character
         .southeast_asian => .cluster, // Thai/Lao use clusters
         .other_complex => .cluster,
     };

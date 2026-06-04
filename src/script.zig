@@ -9,175 +9,12 @@
 //! - Which shaping rules to apply
 
 const std = @import("std");
+const properties = @import("properties.zig");
 
-/// Script property for text shaping guidance
-pub const Script = enum(u8) {
-    // Common and inherited - don't require specific shaping
-    Common,
-    Inherited,
-
-    // Latin-based scripts - simple left-to-right shaping
-    Latin,
-    Greek,
-    Cyrillic,
-    Armenian,
-    Georgian,
-
-    // RTL scripts requiring BiDi and contextual shaping
-    Hebrew,
-    Arabic,
-    Syriac,
-    Thaana,
-    Nko,
-
-    // Indic scripts requiring complex shaping
-    Devanagari,
-    Bengali,
-    Gurmukhi,
-    Gujarati,
-    Oriya,
-    Tamil,
-    Telugu,
-    Kannada,
-    Malayalam,
-    Sinhala,
-
-    // Southeast Asian scripts
-    Thai,
-    Lao,
-    Myanmar,
-    Khmer,
-
-    // CJK scripts
-    Han,
-    Hiragana,
-    Katakana,
-    Hangul,
-    Bopomofo,
-
-    // Other important scripts
-    Tibetan,
-    Mongolian,
-    Ethiopian,
-    Cherokee,
-    Canadian_Aboriginal,
-    Ogham,
-    Runic,
-    Braille,
-
-    // Historical and specialized scripts
-    Old_Italic,
-    Gothic,
-    Deseret,
-    Shavian,
-    Osmanya,
-    Cypriot,
-    Linear_B,
-    Ugaritic,
-    Phoenician,
-    Kharoshthi,
-    Cuneiform,
-
-    // Additional scripts
-    Tagalog,
-    Hanunoo,
-    Buhid,
-    Tagbanwa,
-    Limbu,
-    Tai_Le,
-    Buginese,
-    Coptic,
-    New_Tai_Lue,
-    Glagolitic,
-    Tifinagh,
-    Syloti_Nagri,
-    Old_Persian,
-    Balinese,
-    Phags_Pa,
-    Yi,
-
-    // Unknown script
-    Unknown,
-
-    /// Returns true if this script requires complex shaping
-    pub fn requiresComplexShaping(self: Script) bool {
-        return switch (self) {
-            // Arabic script family - joining, contextual forms
-            .Arabic, .Syriac, .Thaana, .Nko => true,
-
-            // Indic scripts - complex syllable formation
-            .Devanagari,
-            .Bengali,
-            .Gurmukhi,
-            .Gujarati,
-            .Oriya,
-            .Tamil,
-            .Telugu,
-            .Kannada,
-            .Malayalam,
-            .Sinhala,
-            => true,
-
-            // Southeast Asian scripts - line breaking, positioning
-            .Thai, .Lao, .Myanmar, .Khmer => true,
-
-            // Tibetan and Mongolian - stacking, positioning
-            .Tibetan, .Mongolian => true,
-
-            else => false,
-        };
-    }
-
-    /// Returns true if this script is written right-to-left
-    pub fn isRTL(self: Script) bool {
-        return switch (self) {
-            .Hebrew, .Arabic, .Syriac, .Thaana, .Nko => true,
-            else => false,
-        };
-    }
-
-    /// Returns true if this script uses joining behavior (like Arabic)
-    pub fn hasJoining(self: Script) bool {
-        return switch (self) {
-            .Arabic, .Syriac, .Mongolian => true,
-            else => false,
-        };
-    }
-
-    /// Returns true if this script is typically monospace-incompatible
-    pub fn isMonospaceChallenge(self: Script) bool {
-        return switch (self) {
-            // Scripts that don't fit well in monospace
-            .Devanagari,
-            .Bengali,
-            .Thai,
-            .Myanmar,
-            .Khmer,
-            .Tibetan,
-            => true,
-            else => false,
-        };
-    }
-
-    /// Returns the typical text direction for this script
-    pub fn getTextDirection(self: Script) enum { ltr, rtl, ttb } {
-        return switch (self) {
-            .Hebrew, .Arabic, .Syriac, .Thaana, .Nko => .rtl,
-            .Mongolian => .ttb, // Top-to-bottom (though can be horizontal)
-            else => .ltr,
-        };
-    }
-
-    /// Returns true if this script commonly uses combining marks
-    pub fn usesCombiningMarks(self: Script) bool {
-        return switch (self) {
-            .Latin, .Greek, .Cyrillic => true, // diacritics
-            .Hebrew, .Arabic => true, // points, marks
-            .Devanagari, .Bengali, .Thai, .Myanmar => true, // vowel marks
-            else => false,
-        };
-    }
-};
+/// Script property for text shaping guidance.
+/// Canonical definition (full UCD 16.0.0 value set) lives in `properties.zig`;
+/// re-exported here so the public API surface stays stable.
+pub const Script = properties.Script;
 
 /// Script run - a sequence of characters from the same script
 pub const ScriptRun = struct {
@@ -312,58 +149,15 @@ pub const ShapingInfo = struct {
 
 /// Shaping approach recommendation for zfont
 pub const ShapingApproach = enum {
-    simple,  // Simple left-to-right, character-by-character
-    bidi,    // BiDi reordering needed, but simple shaping
+    simple, // Simple left-to-right, character-by-character
+    bidi, // BiDi reordering needed, but simple shaping
     complex, // Full complex script shaping required
 };
 
-/// Get script for a codepoint (placeholder - would use lookup table)
+/// Get the Unicode script (UAX #24) for a codepoint via the generated tables.
 pub fn getScript(cp: u32) Script {
-    // Simplified script detection for now
-    // In the full implementation, this would use generated lookup tables
-
-    // ASCII and Latin-1
-    if (cp <= 0x00FF) {
-        if (cp <= 0x007F) return .Common; // ASCII
-        return .Latin; // Latin-1 supplement
-    }
-
-    // Latin Extended
-    if (cp >= 0x0100 and cp <= 0x024F) return .Latin;
-
-    // Greek
-    if (cp >= 0x0370 and cp <= 0x03FF) return .Greek;
-
-    // Cyrillic
-    if (cp >= 0x0400 and cp <= 0x04FF) return .Cyrillic;
-
-    // Hebrew
-    if (cp >= 0x0590 and cp <= 0x05FF) return .Hebrew;
-
-    // Arabic
-    if (cp >= 0x0600 and cp <= 0x06FF) return .Arabic;
-    if (cp >= 0x0750 and cp <= 0x077F) return .Arabic; // Arabic Supplement
-    if (cp >= 0x08A0 and cp <= 0x08FF) return .Arabic; // Arabic Extended-A
-
-    // Devanagari
-    if (cp >= 0x0900 and cp <= 0x097F) return .Devanagari;
-
-    // Bengali
-    if (cp >= 0x0980 and cp <= 0x09FF) return .Bengali;
-
-    // Thai
-    if (cp >= 0x0E00 and cp <= 0x0E7F) return .Thai;
-
-    // CJK
-    if (cp >= 0x4E00 and cp <= 0x9FFF) return .Han; // CJK Unified Ideographs
-    if (cp >= 0x3040 and cp <= 0x309F) return .Hiragana;
-    if (cp >= 0x30A0 and cp <= 0x30FF) return .Katakana;
-    if (cp >= 0xAC00 and cp <= 0xD7AF) return .Hangul; // Hangul Syllables
-
-    // Emoji and symbols
-    if (cp >= 0x1F300 and cp <= 0x1F9FF) return .Common; // Emoji blocks
-
-    return .Unknown;
+    if (cp > 0x10FFFF) return .Unknown;
+    return properties.tables.get(@intCast(cp)).script;
 }
 
 /// Determine if we should break a script run between two scripts
@@ -404,7 +198,6 @@ pub fn detectPrimaryScript(text: []const u32) Script {
 }
 
 /// Terminal-specific script utilities
-
 /// Check if text requires special terminal handling
 pub fn requiresSpecialTerminalHandling(script: Script) bool {
     return switch (script) {
@@ -453,6 +246,20 @@ test "script detection mixed" {
 
     // Should detect at least one script run (Arabic)
     try std.testing.expect(runs.len >= 1);
+}
+
+test "getScript table-backed classification" {
+    try std.testing.expectEqual(Script.Latin, getScript('A'));
+    try std.testing.expectEqual(Script.Latin, getScript('z'));
+    try std.testing.expectEqual(Script.Greek, getScript(0x03B1)); // α
+    try std.testing.expectEqual(Script.Cyrillic, getScript(0x0434)); // д
+    try std.testing.expectEqual(Script.Han, getScript(0x4E2D)); // 中
+    try std.testing.expectEqual(Script.Hebrew, getScript(0x05D0)); // א
+    try std.testing.expectEqual(Script.Arabic, getScript(0x0627)); // ا
+    try std.testing.expectEqual(Script.Devanagari, getScript(0x0905)); // अ
+    try std.testing.expectEqual(Script.Hiragana, getScript(0x3042)); // あ
+    try std.testing.expectEqual(Script.Common, getScript('5')); // digits are Common
+    try std.testing.expectEqual(Script.Unknown, getScript(0x10FFFF + 1)); // out of range
 }
 
 test "script shaping analysis" {

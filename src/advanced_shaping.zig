@@ -148,11 +148,11 @@ pub const IndicSyllable = struct {
 
 /// Emoji sequence type
 pub const EmojiSequenceType = enum {
-    single,           // Single emoji
-    skin_tone,        // Emoji + skin tone modifier
-    zwj_sequence,     // Zero-width joiner sequence
-    tag_sequence,     // Tag sequence (flags, etc.)
-    keycap_sequence,  // Keycap sequence
+    single, // Single emoji
+    skin_tone, // Emoji + skin tone modifier
+    zwj_sequence, // Zero-width joiner sequence
+    tag_sequence, // Tag sequence (flags, etc.)
+    keycap_sequence, // Keycap sequence
     modifier_sequence, // Modifier sequence
 };
 
@@ -465,7 +465,7 @@ pub const AdvancedShaper = struct {
             const cp_len = std.unicode.utf8ByteSequenceLength(text[byte_offset]) catch 1;
             if (byte_offset + cp_len > text.len) break;
 
-            const codepoint = std.unicode.utf8Decode(text[byte_offset..byte_offset + cp_len]) catch 0;
+            const codepoint = std.unicode.utf8Decode(text[byte_offset .. byte_offset + cp_len]) catch 0;
 
             // Simplified Indic categorization
             if (isIndicConsonant(codepoint)) {
@@ -563,7 +563,8 @@ pub const AdvancedShaper = struct {
         // Check for ZWJ sequence
         if (isEmojiBase(first_cp) and glyphs.len > 2 and
             glyphs[1].codepoint == 0x200D and // ZWJ
-            isEmojiBase(glyphs[2].codepoint)) {
+            isEmojiBase(glyphs[2].codepoint))
+        {
             try sequence.codepoints.append(self.allocator, glyphs[1].codepoint);
             try sequence.codepoints.append(self.allocator, glyphs[2].codepoint);
             sequence.sequence_type = .zwj_sequence;
@@ -622,17 +623,17 @@ fn isIndicVowel(codepoint: u21) bool {
 fn isThaiCombiningMark(codepoint: u21) bool {
     // Thai combining marks
     return (codepoint >= 0x0E30 and codepoint <= 0x0E3A) or
-           (codepoint >= 0x0E47 and codepoint <= 0x0E4E);
+        (codepoint >= 0x0E47 and codepoint <= 0x0E4E);
 }
 
 fn isEmojiBase(codepoint: u21) bool {
     // Common emoji ranges
     return (codepoint >= 0x1F600 and codepoint <= 0x1F64F) or // Emoticons
-           (codepoint >= 0x1F300 and codepoint <= 0x1F5FF) or // Misc Symbols
-           (codepoint >= 0x1F680 and codepoint <= 0x1F6FF) or // Transport
-           (codepoint >= 0x1F700 and codepoint <= 0x1F77F) or // Alchemical
-           (codepoint >= 0x1F780 and codepoint <= 0x1F7FF) or // Geometric Extended
-           (codepoint >= 0x1F800 and codepoint <= 0x1F8FF);   // Supplemental Arrows-C
+        (codepoint >= 0x1F300 and codepoint <= 0x1F5FF) or // Misc Symbols
+        (codepoint >= 0x1F680 and codepoint <= 0x1F6FF) or // Transport
+        (codepoint >= 0x1F700 and codepoint <= 0x1F77F) or // Alchemical
+        (codepoint >= 0x1F780 and codepoint <= 0x1F7FF) or // Geometric Extended
+        (codepoint >= 0x1F800 and codepoint <= 0x1F8FF); // Supplemental Arrows-C
 }
 
 fn isSkinToneModifier(codepoint: u21) bool {

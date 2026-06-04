@@ -98,110 +98,6 @@ pub const LineBreakClass = enum(u6) {
     BB, // Break Before
     HY, // Hyphen
     CB, // Contingent Break Opportunity
-};
-
-/// BiDi class for UAX #9 (Bidirectional Algorithm)
-pub const BiDiClass = enum(u5) {
-    L,   // Left-to-Right
-    R,   // Right-to-Left
-    AL,  // Right-to-Left Arabic
-    EN,  // European Number
-    ES,  // European Number Separator
-    ET,  // European Number Terminator
-    AN,  // Arabic Number
-    CS,  // Common Number Separator
-    NSM, // Nonspacing Mark
-    BN,  // Boundary Neutral
-    B,   // Paragraph Separator
-    S,   // Segment Separator
-    WS,  // Whitespace
-    ON,  // Other Neutrals
-    LRE, // Left-to-Right Embedding
-    LRO, // Left-to-Right Override
-    RLE, // Right-to-Left Embedding
-    RLO, // Right-to-Left Override
-    PDF, // Pop Directional Format
-    LRI, // Left-to-Right Isolate
-    RLI, // Right-to-Left Isolate
-    FSI, // First Strong Isolate
-    PDI, // Pop Directional Isolate
-};
-
-/// Script property for text shaping guidance
-pub const Script = enum(u8) {
-    // Common and inherited
-    Common,
-    Inherited,
-
-    // Major scripts for terminal use
-    Latin,
-    Greek,
-    Cyrillic,
-    Armenian,
-    Hebrew,
-    Arabic,
-    Syriac,
-    Thaana,
-    Devanagari,
-    Bengali,
-    Gurmukhi,
-    Gujarati,
-    Oriya,
-    Tamil,
-    Telugu,
-    Kannada,
-    Malayalam,
-    Sinhala,
-    Thai,
-    Lao,
-    Tibetan,
-    Myanmar,
-    Georgian,
-    Hangul,
-    Ethiopian,
-    Cherokee,
-    Canadian_Aboriginal,
-    Ogham,
-    Runic,
-    Khmer,
-    Mongolian,
-    Hiragana,
-    Katakana,
-    Bopomofo,
-    Han,
-    Yi,
-    Old_Italic,
-    Gothic,
-    Deseret,
-    Tagalog,
-    Hanunoo,
-    Buhid,
-    Tagbanwa,
-    Limbu,
-    Tai_Le,
-    Linear_B,
-    Ugaritic,
-    Shavian,
-    Osmanya,
-    Cypriot,
-    Braille,
-    Buginese,
-    Coptic,
-    New_Tai_Lue,
-    Glagolitic,
-    Tifinagh,
-    Syloti_Nagri,
-    Old_Persian,
-    Kharoshthi,
-    Balinese,
-    Cuneiform,
-    Phoenician,
-    Phags_Pa,
-    Nko,
-
-    // Additional scripts (truncated for space)
-    Unknown,
-};
     CL, // Close Punctuation
     CP, // Close Parenthesis
     EX, // Exclamation/Interrogation
@@ -231,6 +127,210 @@ pub const Script = enum(u8) {
     _,
 };
 
+/// BiDi class for UAX #9 (Bidirectional Algorithm)
+pub const BiDiClass = enum(u5) {
+    L, // Left-to-Right
+    R, // Right-to-Left
+    AL, // Right-to-Left Arabic
+    EN, // European Number
+    ES, // European Number Separator
+    ET, // European Number Terminator
+    AN, // Arabic Number
+    CS, // Common Number Separator
+    NSM, // Nonspacing Mark
+    BN, // Boundary Neutral
+    B, // Paragraph Separator
+    S, // Segment Separator
+    WS, // Whitespace
+    ON, // Other Neutrals
+    LRE, // Left-to-Right Embedding
+    LRO, // Left-to-Right Override
+    RLE, // Right-to-Left Embedding
+    RLO, // Right-to-Left Override
+    PDF, // Pop Directional Format
+    LRI, // Left-to-Right Isolate
+    RLI, // Right-to-Left Isolate
+    FSI, // First Strong Isolate
+    PDI, // Pop Directional Isolate
+};
+
+/// Script property (UAX #24). Must stay in sync with `properties.Script`;
+/// the generated `unicode_tables.zig` is type-checked against the canonical
+/// enum, so any drift here fails to compile.
+pub const Script = enum(u8) {
+    Adlam,
+    Ahom,
+    Anatolian_Hieroglyphs,
+    Arabic,
+    Armenian,
+    Avestan,
+    Balinese,
+    Bamum,
+    Bassa_Vah,
+    Batak,
+    Bengali,
+    Bhaiksuki,
+    Bopomofo,
+    Brahmi,
+    Braille,
+    Buginese,
+    Buhid,
+    Canadian_Aboriginal,
+    Carian,
+    Caucasian_Albanian,
+    Chakma,
+    Cham,
+    Cherokee,
+    Chorasmian,
+    Common,
+    Coptic,
+    Cuneiform,
+    Cypriot,
+    Cypro_Minoan,
+    Cyrillic,
+    Deseret,
+    Devanagari,
+    Dives_Akuru,
+    Dogra,
+    Duployan,
+    Egyptian_Hieroglyphs,
+    Elbasan,
+    Elymaic,
+    Ethiopic,
+    Garay,
+    Georgian,
+    Glagolitic,
+    Gothic,
+    Grantha,
+    Greek,
+    Gujarati,
+    Gunjala_Gondi,
+    Gurmukhi,
+    Gurung_Khema,
+    Han,
+    Hangul,
+    Hanifi_Rohingya,
+    Hanunoo,
+    Hatran,
+    Hebrew,
+    Hiragana,
+    Imperial_Aramaic,
+    Inherited,
+    Inscriptional_Pahlavi,
+    Inscriptional_Parthian,
+    Javanese,
+    Kaithi,
+    Kannada,
+    Katakana,
+    Kawi,
+    Kayah_Li,
+    Kharoshthi,
+    Khitan_Small_Script,
+    Khmer,
+    Khojki,
+    Khudawadi,
+    Kirat_Rai,
+    Lao,
+    Latin,
+    Lepcha,
+    Limbu,
+    Linear_A,
+    Linear_B,
+    Lisu,
+    Lycian,
+    Lydian,
+    Mahajani,
+    Makasar,
+    Malayalam,
+    Mandaic,
+    Manichaean,
+    Marchen,
+    Masaram_Gondi,
+    Medefaidrin,
+    Meetei_Mayek,
+    Mende_Kikakui,
+    Meroitic_Cursive,
+    Meroitic_Hieroglyphs,
+    Miao,
+    Modi,
+    Mongolian,
+    Mro,
+    Multani,
+    Myanmar,
+    Nabataean,
+    Nag_Mundari,
+    Nandinagari,
+    Newa,
+    New_Tai_Lue,
+    Nko,
+    Nushu,
+    Nyiakeng_Puachue_Hmong,
+    Ogham,
+    Ol_Chiki,
+    Old_Hungarian,
+    Old_Italic,
+    Old_North_Arabian,
+    Old_Permic,
+    Old_Persian,
+    Old_Sogdian,
+    Old_South_Arabian,
+    Old_Turkic,
+    Old_Uyghur,
+    Ol_Onal,
+    Oriya,
+    Osage,
+    Osmanya,
+    Pahawh_Hmong,
+    Palmyrene,
+    Pau_Cin_Hau,
+    Phags_Pa,
+    Phoenician,
+    Psalter_Pahlavi,
+    Rejang,
+    Runic,
+    Samaritan,
+    Saurashtra,
+    Sharada,
+    Shavian,
+    Siddham,
+    SignWriting,
+    Sinhala,
+    Sogdian,
+    Sora_Sompeng,
+    Soyombo,
+    Sundanese,
+    Sunuwar,
+    Syloti_Nagri,
+    Syriac,
+    Tagalog,
+    Tagbanwa,
+    Tai_Le,
+    Tai_Tham,
+    Tai_Viet,
+    Takri,
+    Tamil,
+    Tangsa,
+    Tangut,
+    Telugu,
+    Thaana,
+    Thai,
+    Tibetan,
+    Tifinagh,
+    Tirhuta,
+    Todhri,
+    Toto,
+    Tulu_Tigalari,
+    Ugaritic,
+    Vai,
+    Vithkuqi,
+    Wancho,
+    Warang_Citi,
+    Yezidi,
+    Yi,
+    Zanabazar_Square,
+    Unknown,
+};
+
 /// Case mappings for a codepoint
 pub const CaseMappings = struct {
     uppercase: u21 = 0,
@@ -243,12 +343,6 @@ const WidthInfo = struct {
     ambiguous: bool,
 };
 
-const Composition = struct {
-    lead: u21,
-    trail: u21,
-    result: u21,
-};
-
 pub const Properties = packed struct {
     width: u2 = 1,
     ambiguous_width: bool = false,
@@ -258,6 +352,8 @@ pub const Properties = packed struct {
     uppercase: u21 = 0,
     lowercase: u21 = 0,
     titlecase: u21 = 0,
+    script: Script = .Unknown,
+    bidi_class: BiDiClass = .L,
 
     pub fn eql(a: Properties, b: Properties) bool {
         return a.width == b.width and
@@ -267,30 +363,9 @@ pub const Properties = packed struct {
             a.combining_class == b.combining_class and
             a.uppercase == b.uppercase and
             a.lowercase == b.lowercase and
-            a.titlecase == b.titlecase;
-    }
-
-    pub fn format(
-        self: Properties,
-        comptime layout: []const u8,
-        opts: std.fmt.FormatOptions,
-        writer: anytype,
-    ) !void {
-        _ = layout;
-        _ = opts;
-        try writer.print(
-            ".{{ .width = {d}, .ambiguous_width = {}, .grapheme_boundary_class = .{s}, .word_break_class = .{s}, .combining_class = {d}, .uppercase = {d}, .lowercase = {d}, .titlecase = {d} }}",
-            .{
-                self.width,
-                self.ambiguous_width,
-                @tagName(self.grapheme_boundary_class),
-                @tagName(self.word_break_class),
-                self.combining_class,
-                self.uppercase,
-                self.lowercase,
-                self.titlecase,
-            },
-        );
+            a.titlecase == b.titlecase and
+            a.script == b.script and
+            a.bidi_class == b.bidi_class;
     }
 };
 
@@ -370,7 +445,7 @@ pub fn Generator(comptime Context: type) type {
                     if (i % 8 == 0) try buf.appendSlice(alloc, "        ");
                     const str = try std.fmt.allocPrint(
                         alloc,
-                        ".{{ .width = {d}, .ambiguous_width = {}, .grapheme_boundary_class = .{s}, .word_break_class = .{s}, .combining_class = {d}, .uppercase = {d}, .lowercase = {d}, .titlecase = {d} }},\n",
+                        ".{{ .width = {d}, .ambiguous_width = {}, .grapheme_boundary_class = .{s}, .word_break_class = .{s}, .combining_class = {d}, .uppercase = {d}, .lowercase = {d}, .titlecase = {d}, .script = .{s}, .bidi_class = .{s} }},\n",
                         .{
                             value.width,
                             value.ambiguous_width,
@@ -380,6 +455,8 @@ pub fn Generator(comptime Context: type) type {
                             value.uppercase,
                             value.lowercase,
                             value.titlecase,
+                            @tagName(value.script),
+                            @tagName(value.bidi_class),
                         },
                     );
                     defer alloc.free(str);
@@ -471,7 +548,8 @@ pub fn Generator(comptime Context: type) type {
     };
 }
 
-// Unicode data fetcher (simplified inline version)
+// Unicode data fetcher (simplified inline version).
+// URLs are pinned to UCD 16.0.0 for reproducible table generation.
 pub const UnicodeFile = enum {
     east_asian_width,
     grapheme_break_property,
@@ -479,15 +557,23 @@ pub const UnicodeFile = enum {
     derived_core_properties,
     word_break_property,
     line_break,
+    scripts,
+    bidi_class,
+    emoji_data,
+
+    const ucd_base = "https://www.unicode.org/Public/16.0.0/ucd/";
 
     pub fn url(self: UnicodeFile) []const u8 {
         return switch (self) {
-            .east_asian_width => "https://www.unicode.org/Public/UCD/latest/ucd/EastAsianWidth.txt",
-            .grapheme_break_property => "https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/GraphemeBreakProperty.txt",
-            .unicode_data => "https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt",
-            .derived_core_properties => "https://www.unicode.org/Public/UCD/latest/ucd/DerivedCoreProperties.txt",
-            .word_break_property => "https://www.unicode.org/Public/UCD/latest/ucd/auxiliary/WordBreakProperty.txt",
-            .line_break => "https://www.unicode.org/Public/UCD/latest/ucd/LineBreak.txt",
+            .east_asian_width => ucd_base ++ "EastAsianWidth.txt",
+            .grapheme_break_property => ucd_base ++ "auxiliary/GraphemeBreakProperty.txt",
+            .unicode_data => ucd_base ++ "UnicodeData.txt",
+            .derived_core_properties => ucd_base ++ "DerivedCoreProperties.txt",
+            .word_break_property => ucd_base ++ "auxiliary/WordBreakProperty.txt",
+            .line_break => ucd_base ++ "LineBreak.txt",
+            .scripts => ucd_base ++ "Scripts.txt",
+            .bidi_class => ucd_base ++ "extracted/DerivedBidiClass.txt",
+            .emoji_data => ucd_base ++ "emoji/emoji-data.txt",
         };
     }
 
@@ -499,32 +585,28 @@ pub const UnicodeFile = enum {
             .derived_core_properties => "DerivedCoreProperties.txt",
             .word_break_property => "WordBreakProperty.txt",
             .line_break => "LineBreak.txt",
+            .scripts => "Scripts.txt",
+            .bidi_class => "DerivedBidiClass.txt",
+            .emoji_data => "emoji-data.txt",
         };
     }
 };
 
-fn downloadFile(alloc: std.mem.Allocator, file: UnicodeFile, output_path: []const u8) !void {
+fn downloadFile(alloc: std.mem.Allocator, io: std.Io, file: UnicodeFile, output_path: []const u8) !void {
     const url = file.url();
     std.log.info("Downloading {s}...", .{file.filename()});
 
-    var child = std.process.Child.init(&[_][]const u8{ "curl", "-s", "-o", output_path, url }, alloc);
-    _ = try child.spawnAndWait();
+    const result = try std.process.run(alloc, io, .{
+        .argv = &[_][]const u8{ "curl", "-sSfL", "-o", output_path, url },
+    });
+    defer alloc.free(result.stdout);
+    defer alloc.free(result.stderr);
+
+    if (!result.term.success()) return error.DownloadFailed;
 }
 
-fn readAllAlloc(alloc: std.mem.Allocator, path: []const u8) ![]u8 {
-    var file = try std.fs.cwd().openFile(path, .{});
-    defer file.close();
-
-    const stat = try file.stat();
-    const size = std.math.cast(usize, stat.size) orelse return error.FileTooLarge;
-
-    const buffer = try alloc.alloc(u8, size);
-    errdefer alloc.free(buffer);
-
-    const read_len = try file.readAll(buffer);
-    if (read_len != size) return error.UnexpectedEndOfFile;
-
-    return buffer;
+fn readAllAlloc(alloc: std.mem.Allocator, io: std.Io, path: []const u8) ![]u8 {
+    return std.Io.Dir.cwd().readFileAlloc(io, path, alloc, .unlimited);
 }
 
 fn parseCodepointRange(range_text: []const u8) !struct { start: u21, end: u21 } {
@@ -552,7 +634,11 @@ fn parseEastAsianWidth(alloc: std.mem.Allocator, content: []const u8) !std.AutoH
 
         const semi = std.mem.indexOfScalar(u8, line, ';') orelse continue;
         const range_part = std.mem.trim(u8, line[0..semi], " \t");
-        const class_part = std.mem.trim(u8, line[semi + 1 ..], " \t");
+        var class_part = std.mem.trim(u8, line[semi + 1 ..], " \t");
+        // The width value abuts a `# category` comment; strip it before matching.
+        if (std.mem.indexOfScalar(u8, class_part, '#')) |idx| {
+            class_part = std.mem.trim(u8, class_part[0..idx], " \t");
+        }
         if (class_part.len == 0) continue;
 
         const range = try parseCodepointRange(range_part);
@@ -635,6 +721,139 @@ fn parseWordBreakProperty(alloc: std.mem.Allocator, content: []const u8) !std.Au
     }
 
     return map;
+}
+
+/// Parses Scripts.txt (UAX #24) into a codepoint -> Script map.
+/// Enum members match UCD property values verbatim, so `stringToEnum`
+/// resolves names directly. Unassigned code points are left out (they fall
+/// back to the `Properties` default of `.Unknown`).
+fn parseScripts(alloc: std.mem.Allocator, content: []const u8) !std.AutoHashMap(u21, Script) {
+    var map = std.AutoHashMap(u21, Script).init(alloc);
+    errdefer map.deinit();
+
+    var lines = std.mem.splitScalar(u8, content, '\n');
+    while (lines.next()) |line_raw| {
+        const line = std.mem.trim(u8, line_raw, " \t\r");
+        if (line.len == 0 or line[0] == '#') continue;
+        const semi = std.mem.indexOfScalar(u8, line, ';') orelse continue;
+        const range_part = std.mem.trim(u8, line[0..semi], " \t");
+        var class_part = std.mem.trim(u8, line[semi + 1 ..], " \t");
+        if (std.mem.indexOfScalar(u8, class_part, '#')) |idx| {
+            class_part = std.mem.trim(u8, class_part[0..idx], " \t");
+        }
+        const script = std.meta.stringToEnum(Script, class_part) orelse continue;
+
+        const range = try parseCodepointRange(range_part);
+        var cp = range.start;
+        while (cp <= range.end) : (cp += 1) {
+            try map.put(cp, script);
+        }
+    }
+
+    return map;
+}
+
+/// Maps the long bidi-class names used by `DerivedBidiClass.txt` `@missing`
+/// lines to our short `BiDiClass` tags.
+fn mapBidiMissingName(name: []const u8) ?BiDiClass {
+    if (std.mem.eql(u8, name, "Left_To_Right")) return .L;
+    if (std.mem.eql(u8, name, "Right_To_Left")) return .R;
+    if (std.mem.eql(u8, name, "Arabic_Letter")) return .AL;
+    if (std.mem.eql(u8, name, "European_Terminator")) return .ET;
+    return null;
+}
+
+/// Parses DerivedBidiClass.txt (UAX #9) into a codepoint -> BiDiClass map.
+/// Honors the `@missing` block defaults so unassigned code points inside the
+/// RTL/Arabic/currency ranges classify correctly. The global default is `L`,
+/// which equals the `Properties` default, so those entries are omitted.
+/// `@missing` lines appear before the data lines in the file, so a single
+/// forward pass leaves explicit assignments overriding the defaults.
+fn parseBidiClass(alloc: std.mem.Allocator, content: []const u8) !std.AutoHashMap(u21, BiDiClass) {
+    var map = std.AutoHashMap(u21, BiDiClass).init(alloc);
+    errdefer map.deinit();
+
+    var lines = std.mem.splitScalar(u8, content, '\n');
+    while (lines.next()) |line_raw| {
+        const line = std.mem.trim(u8, line_raw, " \t\r");
+        if (line.len == 0) continue;
+
+        if (line[0] == '#') {
+            // Apply non-default @missing block defaults.
+            const missing_marker = "@missing:";
+            const at = std.mem.indexOf(u8, line, missing_marker) orelse continue;
+            const rest = std.mem.trim(u8, line[at + missing_marker.len ..], " \t");
+            const semi = std.mem.indexOfScalar(u8, rest, ';') orelse continue;
+            const range_part = std.mem.trim(u8, rest[0..semi], " \t");
+            const name_part = std.mem.trim(u8, rest[semi + 1 ..], " \t");
+            const class = mapBidiMissingName(name_part) orelse continue;
+            if (class == .L) continue; // global default; rely on Properties default
+
+            const range = try parseCodepointRange(range_part);
+            var cp = range.start;
+            while (cp <= range.end) : (cp += 1) {
+                try map.put(cp, class);
+            }
+            continue;
+        }
+
+        const semi = std.mem.indexOfScalar(u8, line, ';') orelse continue;
+        const range_part = std.mem.trim(u8, line[0..semi], " \t");
+        var class_part = std.mem.trim(u8, line[semi + 1 ..], " \t");
+        if (std.mem.indexOfScalar(u8, class_part, '#')) |idx| {
+            class_part = std.mem.trim(u8, class_part[0..idx], " \t");
+        }
+        const class = std.meta.stringToEnum(BiDiClass, class_part) orelse continue;
+
+        const range = try parseCodepointRange(range_part);
+        var cp = range.start;
+        while (cp <= range.end) : (cp += 1) {
+            try map.put(cp, class);
+        }
+    }
+
+    return map;
+}
+
+/// Parses emoji-data.txt, populating the Extended_Pictographic, Emoji_Modifier
+/// and Emoji_Modifier_Base sets. These drive GB11 emoji-ZWJ clustering and the
+/// extended_pictographic grapheme class (absent from GraphemeBreakProperty.txt).
+fn parseEmojiData(
+    content: []const u8,
+    extended_pictographic: *std.AutoHashMap(u21, void),
+    emoji_modifier: *std.AutoHashMap(u21, void),
+    emoji_modifier_base: *std.AutoHashMap(u21, void),
+) !void {
+    var lines = std.mem.splitScalar(u8, content, '\n');
+    while (lines.next()) |line_raw| {
+        const line = std.mem.trim(u8, line_raw, " \t\r");
+        if (line.len == 0 or line[0] == '#') continue;
+        const semi = std.mem.indexOfScalar(u8, line, ';') orelse continue;
+        const range_part = std.mem.trim(u8, line[0..semi], " \t");
+        var prop = std.mem.trim(u8, line[semi + 1 ..], " \t");
+        // Property name abuts the '#' comment with no space, e.g.
+        // "Extended_Pictographic# E0.6 ...".
+        if (std.mem.indexOfScalar(u8, prop, '#')) |idx| {
+            prop = std.mem.trim(u8, prop[0..idx], " \t");
+        }
+
+        const target: ?*std.AutoHashMap(u21, void) =
+            if (std.mem.eql(u8, prop, "Extended_Pictographic"))
+                extended_pictographic
+            else if (std.mem.eql(u8, prop, "Emoji_Modifier_Base"))
+                emoji_modifier_base
+            else if (std.mem.eql(u8, prop, "Emoji_Modifier"))
+                emoji_modifier
+            else
+                null;
+        const map = target orelse continue;
+
+        const range = try parseCodepointRange(range_part);
+        var cp = range.start;
+        while (cp <= range.end) : (cp += 1) {
+            try map.put(cp, {});
+        }
+    }
 }
 
 const UnicodeDataSet = struct {
@@ -784,9 +1003,9 @@ fn mapWordBreakClass(name: []const u8) ?WordBreakClass {
 }
 
 fn mapGeneralCategory(name: []const u8) ?GeneralCategory {
-    inline for (std.meta.fields(GeneralCategory)) |field| {
-        if (std.mem.eql(u8, name, field.name)) {
-            return @field(GeneralCategory, field.name);
+    inline for (comptime std.meta.fieldNames(GeneralCategory)) |field| {
+        if (std.mem.eql(u8, name, field)) {
+            return @field(GeneralCategory, field);
         }
     }
     return null;
@@ -826,38 +1045,6 @@ fn parseDecomposition(
     };
 }
 
-fn parseComposition(
-    alloc: std.mem.Allocator,
-    content: []const u8,
-    compositions: *std.ArrayList(Composition),
-) !void {
-    _ = alloc;
-
-    var lines = std.mem.splitScalar(u8, content, '\n');
-    while (lines.next()) |line_raw| {
-        const line = std.mem.trim(u8, line_raw, " \t\r");
-        if (line.len == 0 or line[0] == '#') continue;
-
-        var fields = std.mem.splitScalar(u8, line, ';');
-        const lhs = fields.next() orelse continue;
-        const rhs = fields.next() orelse continue;
-        _ = fields.next();
-
-        const pair = std.mem.trim(u8, lhs, " \t");
-        const result = std.mem.trim(u8, rhs, " \t");
-
-        var pair_codes = std.mem.splitScalar(u8, pair, ' ');
-        const lead_str = pair_codes.next() orelse continue;
-        const trail_str = pair_codes.next() orelse continue;
-
-        const lead = std.fmt.parseInt(u21, lead_str, 16) catch continue;
-        const trail = std.fmt.parseInt(u21, trail_str, 16) catch continue;
-        const composed = std.fmt.parseInt(u21, result, 16) catch continue;
-
-        try compositions.append(.{ .lead = lead, .trail = trail, .result = composed });
-    }
-}
-
 pub const UnicodeGeneratorContext = struct {
     width_map: *std.AutoHashMap(u21, WidthInfo),
     grapheme_map: *std.AutoHashMap(u21, GraphemeBoundaryClass),
@@ -865,6 +1052,8 @@ pub const UnicodeGeneratorContext = struct {
     case_map: *std.AutoHashMap(u21, CaseMappings),
     combining_map: *std.AutoHashMap(u21, u8),
     general_category_map: *std.AutoHashMap(u21, GeneralCategory),
+    script_map: *std.AutoHashMap(u21, Script),
+    bidi_class_map: *std.AutoHashMap(u21, BiDiClass),
     extended_pictographic: *std.AutoHashMap(u21, void),
     emoji_modifier: *std.AutoHashMap(u21, void),
     emoji_modifier_base: *std.AutoHashMap(u21, void),
@@ -890,6 +1079,13 @@ pub const UnicodeGeneratorContext = struct {
             props.grapheme_boundary_class = klass;
         }
 
+        // Extended_Pictographic lives in emoji-data.txt, not
+        // GraphemeBreakProperty.txt. Inject it for code points the grapheme
+        // table left as the default class so GB11 (emoji-ZWJ) clustering works.
+        if (props.grapheme_boundary_class == .invalid and ctx.extended_pictographic.contains(cp)) {
+            props.grapheme_boundary_class = .extended_pictographic;
+        }
+
         if (props.grapheme_boundary_class == .extended_pictographic) {
             if (ctx.emoji_modifier_base.contains(cp)) {
                 props.grapheme_boundary_class = .extended_pictographic_base;
@@ -912,6 +1108,14 @@ pub const UnicodeGeneratorContext = struct {
             props.titlecase = mappings.titlecase;
         }
 
+        if (ctx.script_map.get(cp)) |script| {
+            props.script = script;
+        }
+
+        if (ctx.bidi_class_map.get(cp)) |bidi_class| {
+            props.bidi_class = bidi_class;
+        }
+
         return props;
     }
 
@@ -926,35 +1130,52 @@ pub fn main() !void {
     defer _ = gpa.deinit();
 
     const alloc = gpa.allocator();
+
+    var threaded: std.Io.Threaded = .init(alloc, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
+
     std.log.info("gcode Unicode table generator starting...", .{});
 
     const temp_dir = "unicode_data";
-    std.fs.cwd().makeDir(temp_dir) catch |err| switch (err) {
-        error.PathAlreadyExists => {},
-        else => return err,
-    };
+    try std.Io.Dir.cwd().createDirPath(io, temp_dir);
 
     const eaw_path = "unicode_data/EastAsianWidth.txt";
     const gbp_path = "unicode_data/GraphemeBreakProperty.txt";
     const wbp_path = "unicode_data/WordBreakProperty.txt";
     const ud_path = "unicode_data/UnicodeData.txt";
+    const scripts_path = "unicode_data/Scripts.txt";
+    const bidi_path = "unicode_data/DerivedBidiClass.txt";
+    const emoji_path = "unicode_data/emoji-data.txt";
 
-    try downloadFile(alloc, .east_asian_width, eaw_path);
-    try downloadFile(alloc, .grapheme_break_property, gbp_path);
-    try downloadFile(alloc, .word_break_property, wbp_path);
-    try downloadFile(alloc, .unicode_data, ud_path);
+    try downloadFile(alloc, io, .east_asian_width, eaw_path);
+    try downloadFile(alloc, io, .grapheme_break_property, gbp_path);
+    try downloadFile(alloc, io, .word_break_property, wbp_path);
+    try downloadFile(alloc, io, .unicode_data, ud_path);
+    try downloadFile(alloc, io, .scripts, scripts_path);
+    try downloadFile(alloc, io, .bidi_class, bidi_path);
+    try downloadFile(alloc, io, .emoji_data, emoji_path);
 
-    const eaw_content = try readAllAlloc(alloc, eaw_path);
+    const eaw_content = try readAllAlloc(alloc, io, eaw_path);
     defer alloc.free(eaw_content);
 
-    const gbp_content = try readAllAlloc(alloc, gbp_path);
+    const gbp_content = try readAllAlloc(alloc, io, gbp_path);
     defer alloc.free(gbp_content);
 
-    const wbp_content = try readAllAlloc(alloc, wbp_path);
+    const wbp_content = try readAllAlloc(alloc, io, wbp_path);
     defer alloc.free(wbp_content);
 
-    const ud_content = try readAllAlloc(alloc, ud_path);
+    const ud_content = try readAllAlloc(alloc, io, ud_path);
     defer alloc.free(ud_content);
+
+    const scripts_content = try readAllAlloc(alloc, io, scripts_path);
+    defer alloc.free(scripts_content);
+
+    const bidi_content = try readAllAlloc(alloc, io, bidi_path);
+    defer alloc.free(bidi_content);
+
+    const emoji_content = try readAllAlloc(alloc, io, emoji_path);
+    defer alloc.free(emoji_content);
 
     var width_map = try parseEastAsianWidth(alloc, eaw_content);
     defer width_map.deinit();
@@ -968,6 +1189,12 @@ pub fn main() !void {
     var unicode_data = try parseUnicodeData(alloc, ud_content);
     defer unicode_data.deinit();
 
+    var script_map = try parseScripts(alloc, scripts_content);
+    defer script_map.deinit();
+
+    var bidi_class_map = try parseBidiClass(alloc, bidi_content);
+    defer bidi_class_map.deinit();
+
     var extended_pictographic = std.AutoHashMap(u21, void).init(alloc);
     defer extended_pictographic.deinit();
 
@@ -977,6 +1204,13 @@ pub fn main() !void {
     var emoji_modifier_base = std.AutoHashMap(u21, void).init(alloc);
     defer emoji_modifier_base.deinit();
 
+    try parseEmojiData(
+        emoji_content,
+        &extended_pictographic,
+        &emoji_modifier,
+        &emoji_modifier_base,
+    );
+
     const context = UnicodeGeneratorContext{
         .width_map = &width_map,
         .grapheme_map = &grapheme_map,
@@ -984,6 +1218,8 @@ pub fn main() !void {
         .case_map = &unicode_data.case_map,
         .combining_map = &unicode_data.combining,
         .general_category_map = &unicode_data.categories,
+        .script_map = &script_map,
+        .bidi_class_map = &bidi_class_map,
         .extended_pictographic = &extended_pictographic,
         .emoji_modifier = &emoji_modifier,
         .emoji_modifier_base = &emoji_modifier_base,
@@ -999,9 +1235,7 @@ pub fn main() !void {
     const zig_source = try tables.writeZigToString(alloc);
     defer alloc.free(zig_source);
 
-    var out_file = try std.fs.cwd().createFile(output_path, .{ .truncate = true, .read = false });
-    defer out_file.close();
-    try out_file.writeAll(zig_source);
+    try std.Io.Dir.cwd().writeFile(io, .{ .sub_path = output_path, .data = zig_source });
 
     std.log.info("Generated Unicode tables with {d} unique property buckets", .{tables.stage3.len});
 }

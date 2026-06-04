@@ -56,12 +56,12 @@ const Precompute = struct {
         @setEvalBranchQuota(3_000);
         const info = @typeInfo(GraphemeBoundaryClass).@"enum";
         for (0..1 << 2) |state_init| { // 2^2 = 4 possible states
-            for (info.fields) |field1| {
-                for (info.fields) |field2| {
+            for (info.field_names) |field1| {
+                for (info.field_names) |field2| {
                     var state: BreakState = @bitCast(@as(u2, @intCast(state_init)));
                     const key: Key = .{
-                        .gbc1 = @field(GraphemeBoundaryClass, field1.name),
-                        .gbc2 = @field(GraphemeBoundaryClass, field2.name),
+                        .gbc1 = @field(GraphemeBoundaryClass, field1),
+                        .gbc2 = @field(GraphemeBoundaryClass, field2),
                         .state = state,
                     };
                     const v = graphemeBreakClass(key.gbc1, key.gbc2, &state);
@@ -359,5 +359,31 @@ test "grapheme iterator" {
         const cluster = iter.next();
         try testing.expect(cluster != null);
         try testing.expect(iter.next() == null); // Should cluster together
+    }
+}
+
+test "GB11 emoji ZWJ sequences cluster as one grapheme" {
+    const testing = std.testing;
+
+    // Family emoji: man + ZWJ + woman + ZWJ + girl. Requires every emoji to
+    // carry the Extended_Pictographic class (sourced from emoji-data.txt) for
+    // GB11 to fire across the ZWJ joins.
+    {
+        const family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+        var iter = GraphemeIterator.init(family);
+        const cluster = iter.next();
+        try testing.expect(cluster != null);
+        try testing.expectEqual(family.len, cluster.?.len);
+        try testing.expect(iter.next() == null); // single cluster
+    }
+
+    // Profession emoji: woman + ZWJ + laptop.
+    {
+        const tech = "\u{1F469}\u{200D}\u{1F4BB}";
+        var iter = GraphemeIterator.init(tech);
+        const cluster = iter.next();
+        try testing.expect(cluster != null);
+        try testing.expectEqual(tech.len, cluster.?.len);
+        try testing.expect(iter.next() == null);
     }
 }

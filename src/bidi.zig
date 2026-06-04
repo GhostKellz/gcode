@@ -9,64 +9,10 @@
 const std = @import("std");
 const props = @import("properties.zig");
 
-/// BiDi class for UAX #9 (Bidirectional Algorithm)
-pub const BiDiClass = enum(u5) {
-    L,   // Left-to-Right
-    R,   // Right-to-Left
-    AL,  // Right-to-Left Arabic
-    EN,  // European Number
-    ES,  // European Number Separator
-    ET,  // European Number Terminator
-    AN,  // Arabic Number
-    CS,  // Common Number Separator
-    NSM, // Nonspacing Mark
-    BN,  // Boundary Neutral
-    B,   // Paragraph Separator
-    S,   // Segment Separator
-    WS,  // Whitespace
-    ON,  // Other Neutrals
-    LRE, // Left-to-Right Embedding
-    LRO, // Left-to-Right Override
-    RLE, // Right-to-Left Embedding
-    RLO, // Right-to-Left Override
-    PDF, // Pop Directional Format
-    LRI, // Left-to-Right Isolate
-    RLI, // Right-to-Left Isolate
-    FSI, // First Strong Isolate
-    PDI, // Pop Directional Isolate
-
-    /// Returns true if this is a strong directional character
-    pub fn isStrong(self: BiDiClass) bool {
-        return switch (self) {
-            .L, .R, .AL => true,
-            else => false,
-        };
-    }
-
-    /// Returns true if this is a neutral character
-    pub fn isNeutral(self: BiDiClass) bool {
-        return switch (self) {
-            .B, .S, .WS, .ON => true,
-            else => false,
-        };
-    }
-
-    /// Returns true if this is an RTL character
-    pub fn isRTL(self: BiDiClass) bool {
-        return switch (self) {
-            .R, .AL => true,
-            else => false,
-        };
-    }
-
-    /// Returns true if this is an isolate initiator
-    pub fn isIsolateInitiator(self: BiDiClass) bool {
-        return switch (self) {
-            .LRI, .RLI, .FSI => true,
-            else => false,
-        };
-    }
-};
+/// BiDi class for UAX #9 (Bidirectional Algorithm).
+/// Canonical definition lives in `properties.zig`; re-exported here so the
+/// public API surface stays stable.
+pub const BiDiClass = props.BiDiClass;
 
 /// Direction for text flow
 pub const Direction = enum(u1) {
@@ -82,9 +28,9 @@ pub const MAX_DEPTH: u8 = 125;
 
 /// BiDi run - a sequence of characters with the same embedding level
 pub const Run = struct {
-    start: usize,    // Start index in text
-    length: usize,   // Length of run
-    level: Level,    // Embedding level
+    start: usize, // Start index in text
+    length: usize, // Length of run
+    level: Level, // Embedding level
     direction: Direction,
 
     pub fn end(self: Run) usize {
@@ -534,19 +480,12 @@ pub const BiDi = struct {
 };
 
 /// Get BiDi class for a codepoint (placeholder - would use lookup table)
+/// Get the bidirectional class (UAX #9) for a codepoint via the generated
+/// tables. The tables honor `DerivedBidiClass.txt` `@missing` block defaults,
+/// so unassigned code points in RTL/Arabic ranges classify correctly.
 pub fn getBiDiClass(cp: u32) BiDiClass {
-    // Simplified classification for now
-    // In the full implementation, this would use the generated lookup tables
-
-    if (cp >= 0x0041 and cp <= 0x005A) return .L; // A-Z
-    if (cp >= 0x0061 and cp <= 0x007A) return .L; // a-z
-    if (cp >= 0x05D0 and cp <= 0x05EA) return .R; // Hebrew
-    if (cp >= 0x0600 and cp <= 0x06FF) return .AL; // Arabic
-    if (cp >= 0x0030 and cp <= 0x0039) return .EN; // 0-9
-    if (cp == 0x0020) return .WS; // Space
-    if (cp == 0x000A or cp == 0x000D) return .B; // Line breaks
-
-    return .ON; // Other neutral (default)
+    if (cp > 0x10FFFF) return .L;
+    return props.tables.get(@intCast(cp)).bidi_class;
 }
 
 /// Utility function to reverse a range for RTL display
@@ -647,6 +586,17 @@ pub fn visualToLogical(
     }
 
     return visual_pos; // Fallback
+}
+
+test "getBiDiClass table-backed classification" {
+    try std.testing.expectEqual(BiDiClass.L, getBiDiClass('A'));
+    try std.testing.expectEqual(BiDiClass.L, getBiDiClass('z'));
+    try std.testing.expectEqual(BiDiClass.R, getBiDiClass(0x05D0)); // Hebrew aleph
+    try std.testing.expectEqual(BiDiClass.AL, getBiDiClass(0x0627)); // Arabic alef
+    try std.testing.expectEqual(BiDiClass.EN, getBiDiClass('5')); // ASCII digit
+    try std.testing.expectEqual(BiDiClass.AN, getBiDiClass(0x0660)); // Arabic-Indic digit zero
+    try std.testing.expectEqual(BiDiClass.WS, getBiDiClass(' '));
+    try std.testing.expectEqual(BiDiClass.L, getBiDiClass(0x10FFFF + 1)); // out of range
 }
 
 test "BiDi basic LTR text" {
