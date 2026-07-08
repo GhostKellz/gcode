@@ -369,6 +369,11 @@ pub const Properties = packed struct {
     }
 };
 
+pub const AmbiguousWidthPolicy = enum {
+    narrow,
+    wide,
+};
+
 /// Possible grapheme boundary classes. This isn't an exhaustive list:
 /// we omit control, CR, LF, etc. because in terminal usage that are
 /// impossible because they're handled by the terminal.
@@ -477,7 +482,22 @@ pub fn getProperties(cp: u21) Properties {
 /// Get the display width of a codepoint.
 /// Returns: 0=zero-width, 1=narrow, 2=wide
 pub fn getWidth(cp: u21) u2 {
+    // Format controls used inside terminal grapheme clusters should not advance
+    // the cursor even when table data classifies their East Asian width as neutral.
+    if (cp == 0x200D or
+        (cp >= 0xFE00 and cp <= 0xFE0F) or
+        (cp >= 0xE0100 and cp <= 0xE01EF)) return 0;
+
     return getProperties(cp).width;
+}
+
+/// Get display width with an explicit East Asian Ambiguous width policy.
+/// Most terminals use narrow ambiguous width by default; CJK-focused terminals
+/// may opt into wide ambiguous width for legacy compatibility.
+pub fn getWidthWithPolicy(cp: u21, policy: AmbiguousWidthPolicy) u2 {
+    const width = getWidth(cp);
+    if (width == 1 and policy == .wide and getProperties(cp).ambiguous_width) return 2;
+    return width;
 }
 
 /// Check if a codepoint is zero-width

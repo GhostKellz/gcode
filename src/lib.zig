@@ -8,10 +8,16 @@ const std = @import("std");
 
 // Core functionality
 pub const Properties = @import("properties.zig").Properties;
+pub const AmbiguousWidthPolicy = @import("properties.zig").AmbiguousWidthPolicy;
 pub const GraphemeBoundaryClass = @import("properties.zig").GraphemeBoundaryClass;
 pub const GraphemeBreakState = @import("grapheme.zig").BreakState;
 pub const GraphemeIterator = @import("grapheme.zig").GraphemeIterator;
 pub const ReverseGraphemeIterator = @import("grapheme.zig").ReverseGraphemeIterator;
+pub const TerminalString = @import("terminal_string.zig").TerminalString;
+pub const TerminalSlice = @import("terminal_string.zig").TerminalSlice;
+pub const GraphemeSpan = @import("terminal_string.zig").GraphemeSpan;
+pub const unicode_version = @import("unicode_tables.zig").unicode_version;
+pub const unicode_data_files = @import("unicode_tables.zig").data_files;
 
 // Word boundary detection
 pub const WordBreakState = @import("word.zig").BreakState;
@@ -80,6 +86,7 @@ pub const getCursorGranularity = @import("complex_script.zig").getCursorGranular
 // Main API functions
 pub const getProperties = @import("properties.zig").getProperties;
 pub const getWidth = @import("properties.zig").getWidth;
+pub const getWidthWithPolicy = @import("properties.zig").getWidthWithPolicy;
 pub const isZeroWidth = @import("properties.zig").isZeroWidth;
 pub const isWide = @import("properties.zig").isWide;
 pub const isNarrow = @import("properties.zig").isNarrow;
@@ -117,23 +124,44 @@ pub const utf8 = struct {
 
 // String processing utilities
 pub fn stringWidth(utf8_string: []const u8) usize {
+    return stringWidthWithPolicy(utf8_string, .narrow);
+}
+
+pub fn stringWidthWithPolicy(utf8_string: []const u8, policy: AmbiguousWidthPolicy) usize {
     var width: usize = 0;
-    var i: usize = 0;
-
-    while (i < utf8_string.len) {
-        const len = std.unicode.utf8ByteSequenceLength(utf8_string[i]) catch 1;
-        if (i + len > utf8_string.len) break;
-
-        const cp = std.unicode.utf8Decode(utf8_string[i .. i + len]) catch {
-            i += 1;
-            continue;
-        };
-
-        width += getWidth(cp);
-        i += len;
+    var iter = graphemeIterator(utf8_string);
+    while (iter.next()) |cluster| {
+        width += graphemeWidthWithPolicy(cluster, policy);
     }
 
     return width;
+}
+
+fn graphemeWidthWithPolicy(cluster: []const u8, policy: AmbiguousWidthPolicy) usize {
+    var sum: usize = 0;
+    var count: usize = 0;
+    var has_zwj = false;
+    var has_keycap = false;
+    var regional_indicators: usize = 0;
+    var has_emoji_modifier = false;
+    var has_wide = false;
+
+    var iter = CodePointIterator.init(cluster);
+    while (iter.next()) |item| {
+        count += 1;
+        if (item.code == 0x200D) has_zwj = true;
+        if (item.code == 0x20E3) has_keycap = true;
+        if (item.code >= 0x1F1E6 and item.code <= 0x1F1FF) regional_indicators += 1;
+        if (item.code >= 0x1F3FB and item.code <= 0x1F3FF) has_emoji_modifier = true;
+
+        const cp_width = getWidthWithPolicy(item.code, policy);
+        if (cp_width == 2) has_wide = true;
+        sum += cp_width;
+    }
+
+    if (count == 0) return 0;
+    if (has_zwj or has_keycap or regional_indicators >= 2 or (has_emoji_modifier and has_wide)) return 2;
+    return sum;
 }
 
 pub fn graphemeIterator(utf8_string: []const u8) GraphemeIterator {
@@ -192,12 +220,19 @@ pub fn isDisplayableInTerminal(cp: u21) bool {
 // Cursor movement helpers
 pub fn findPreviousGrapheme(text: []const u8, pos: usize) usize {
     if (pos == 0) return 0;
+    const clamped_pos = @min(pos, text.len);
 
-    var iter = ReverseGraphemeIterator.init(text[0..pos]);
-    if (iter.prev()) |cluster| {
-        return pos - cluster.len;
+    var iter = GraphemeIterator.init(text[0..clamped_pos]);
+    var previous_start: usize = 0;
+    var current_start: usize = 0;
+    while (iter.next()) |cluster| {
+        const next_start = current_start + cluster.len;
+        if (next_start >= clamped_pos) return current_start;
+        previous_start = current_start;
+        current_start = next_start;
     }
-    return 0;
+
+    return previous_start;
 }
 
 pub fn findNextGrapheme(text: []const u8, pos: usize) usize {
@@ -252,6 +287,11 @@ pub const isNormalized = @import("normalize.zig").isNormalized;
 // Tests
 test {
     @import("std").testing.refAllDecls(@This());
+    _ = @import("terminal_fixtures.zig");
+    _ = @import("terminal_string.zig");
+    _ = @import("unicode_conformance_fixtures.zig");
+    _ = @import("property_fixtures.zig");
+    _ = @import("downstream_fixtures.zig");
 }
 
 test "UTF-8 utilities" {
@@ -270,6 +310,43 @@ test "UTF-8 utilities" {
 
     const decoded = try utf8.decode(buf[0..len]);
     try testing.expectEqual(@as(u21, 'A'), decoded);
+}
+
+test "generated unicode table metadata" {
+    const testing = std.testing;
+
+    try testing.expectEqualStrings("16.0.0", unicode_version);
+    try testing.expectEqual(@as(usize, 7), unicode_data_files.len);
+    try testing.expectEqualStrings("UnicodeData.txt", unicode_data_files[0]);
+    try testing.expectEqualStrings("emoji-data.txt", unicode_data_files[unicode_data_files.len - 1]);
+}
+
+test "terminal width fixtures" {
+    const testing = std.testing;
+
+    try testing.expectEqual(@as(u2, 1), getWidth('A'));
+    try testing.expectEqual(@as(u2, 2), getWidth('中'));
+    try testing.expectEqual(@as(u2, 0), getWidth('\u{0301}'));
+    try testing.expectEqual(@as(usize, 10), stringWidth("Hello 世界"));
+}
+
+test "terminal grapheme fixtures" {
+    const testing = std.testing;
+
+    const combining = "e\u{0301}";
+    var combining_iter = graphemeIterator(combining);
+    try testing.expectEqualStrings(combining, combining_iter.next().?);
+    try testing.expect(combining_iter.next() == null);
+
+    const rainbow_flag = "\u{1F3F3}\u{FE0F}\u{200D}\u{1F308}";
+    var flag_iter = graphemeIterator(rainbow_flag);
+    try testing.expectEqualStrings(rainbow_flag, flag_iter.next().?);
+    try testing.expect(flag_iter.next() == null);
+
+    const family = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
+    var family_iter = graphemeIterator(family);
+    try testing.expectEqualStrings(family, family_iter.next().?);
+    try testing.expect(family_iter.next() == null);
 }
 
 test "code point iterator" {

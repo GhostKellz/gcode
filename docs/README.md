@@ -1,111 +1,117 @@
 # gcode Documentation
 
-Welcome to the gcode documentation! This directory contains comprehensive documentation for the gcode Unicode library.
+gcode is an experimental terminal-focused Unicode library for Zig. The docs are
+organized around current APIs, explicit partial/experimental boundaries, and the
+work needed before a v1.0 stability claim.
 
-## Documentation Index
+## Documentation Map
 
-### 📖 User Guides
+```mermaid
+flowchart TD
+    start["Start here<br/>docs/README.md"]
 
-- **[Quick Start](quickstart.md)** - Get started with gcode in minutes
-- **[Ghostshell Integration](ghostshell-integration.md)** - Replace harfbuzz with pure Zig Unicode processing
-- **[Terminal Emulator Integration](terminal-emulator-integration.md)** - Complete guide for integrating gcode into terminal emulators
-- **[Building and Installation](building.md)** - Installation, building, and deployment guide
-- **[Performance Guide](performance.md)** - Performance characteristics and optimization techniques
+    start --> gs["Getting Started"]
+    start --> ref["Reference"]
+    start --> guides["Guides"]
+    start --> internals["Internals"]
+    start --> project["Project"]
 
-### 🔧 Reference
+    gs --> install["installation.md"]
+    gs --> quick["quickstart.md"]
 
-- **[API Reference](api-reference.md)** - Complete API documentation with examples
+    ref --> api["api.md"]
+    ref --> support["support-matrix.md"]
 
-### 🚧 Development
+    guides --> terminal["terminal-integration.md"]
+    guides --> ghostshell["ghostshell-integration.md"]
+    guides --> emoji["emoji-semantics.md"]
 
-- **[Architecture](architecture.md)** - Internal architecture and design decisions
-- **[Contributing](contributing.md)** - Guidelines for contributors
-- **[Unicode Data](unicode-data.md)** - Unicode data sources and processing
+    internals --> arch["architecture.md"]
+    internals --> unicode["unicode-data.md"]
 
-## Quick Start
-
-If you're new to gcode, start here:
-
-1. **New to gcode**: Start with [Quick Start](quickstart.md)
-2. **Ghostshell Integration**: See [Ghostshell Integration](ghostshell-integration.md)
-3. **Terminal Developers**: Read [Terminal Emulator Integration](terminal-emulator-integration.md)
-4. **API Details**: See [API Reference](api-reference.md)
-
-## Key Features
-
-### 🚀 Performance-Optimized
-- **< 50ns per character** for Latin text processing
-- **< 1MB memory** for shaping cache
-- **< 200KB binary** size impact
-- **> 95% cache hit rate** for terminal text
-
-### 🔤 Advanced Text Shaping
-- **16 Programming Ligatures**: →, ≠, >=, <=, etc.
-- **22 Kerning Pairs**: Professional typography
-- **Arabic Script**: Complete joining and contextual forms
-- **Indic Scripts**: Devanagari, Tamil, Bengali, Gujarati
-- **BiDi Support**: Enhanced RTL/LTR cursor positioning
-
-### 🌍 Complete Unicode Support
-- **Multi-Script Processing**: Automatic script detection
-- **Emoji Intelligence**: ZWJ sequences, modifiers, flags
-- **Terminal Optimization**: Monospace enforcement
-- **Memory Efficient**: 3-level compressed lookup tables
-
-## Examples
-
-### Text Shaping with Programming Ligatures
-
-```zig
-const gcode = @import("gcode");
-
-var shaper = gcode.TextShaper.init(allocator);
-defer shaper.deinit();
-
-const font_metrics = gcode.FontMetrics{
-    .units_per_em = 1000,
-    .cell_width = 600,
-    .line_height = 1200,
-    .baseline = 800,
-    .size = 12,
-};
-
-// Shape code with programming ligatures
-const glyphs = try shaper.shape("-> >= != <=", font_metrics);
-defer allocator.free(glyphs);
+    project --> performance["performance.md"]
 ```
 
-### Advanced Script Shaping
+## Runtime Shape
 
-```zig
-var advanced_shaper = gcode.AdvancedShaper.init(allocator);
-defer advanced_shaper.deinit();
+```mermaid
+flowchart LR
+    app["Terminal / TUI / editor"] --> gcode["gcode root module"]
+    gcode --> props["properties / width"]
+    gcode --> grapheme["grapheme and word iterators"]
+    gcode --> utf8["UTF-8 helpers"]
+    gcode --> norm["normalization / case"]
+    gcode --> exp["BiDi / shaping experiments"]
 
-// Automatic script detection and shaping
-const arabic_glyphs = try advanced_shaper.shapeAdvanced("مرحبا", font_metrics);
-const indic_glyphs = try advanced_shaper.shapeAdvanced("नमस्ते", font_metrics);
-const emoji_glyphs = try advanced_shaper.shapeAdvanced("👨‍💻🏳️‍🌈", font_metrics);
+    props --> tables["generated Unicode tables"]
+    grapheme --> tables
+    norm --> tables
+    exp --> partial["needs conformance fixtures"]
 ```
 
-### Character Properties
+## Stability Flow
 
-```zig
-const width = gcode.getWidth('한'); // Returns: 2 (double-width)
-const is_emoji = gcode.getProperties('🎉').general_category == .So;
-const upper = gcode.toUpper('a'); // 'A'
+```mermaid
+flowchart TD
+    surface{"Which API surface?"}
+    surface --> stableish["Current terminal helpers"]
+    surface --> partial["Partial Unicode algorithms"]
+    surface --> experimental["Shaping / BiDi / advanced scripts"]
+    surface --> generated["Generated data pipeline"]
+
+    stableish --> test["Use with application tests"]
+    partial --> conformance["Needs official conformance coverage"]
+    experimental --> avoid["Do not treat as stable"]
+    generated --> pin["Pin Unicode data and checksums"]
 ```
 
-## Performance
+## Getting Started
 
-gcode targets sub-2ns character lookups with <500KB memory usage, making it the fastest Unicode library available.
+- [Installation](getting-started/installation.md) - Add gcode to a Zig project and run local verification.
+- [Quickstart](getting-started/quickstart.md) - Width, UTF-8, grapheme, and cursor examples.
 
-## Support
+## Reference
 
-- **Issues**: Report bugs and request features
-- **Discussions**: Ask questions and share ideas
-- **Contributing**: See contribution guidelines
+- [API Reference](reference/api.md) - Current exported API grouped by maturity.
+- [Support Matrix](reference/support-matrix.md) - Implemented, partial, experimental, and planned surfaces.
 
----
+## Guides
 
-**Built for terminals, optimized for speed** ⚡</content>
-<parameter name="filePath">/data/projects/gcode/docs/README.md
+- [Terminal Integration](guides/terminal-integration.md) - Safe terminal width and cursor movement patterns.
+- [Ghostshell Integration](guides/ghostshell-integration.md) - How to evaluate gcode in Ghostshell-like terminal workflows.
+- [Emoji Semantics](guides/emoji-semantics.md) - What gcode should own versus rendering/font libraries.
+
+## Internals
+
+- [Architecture](internals/architecture.md) - Module graph, table lookup flow, and boundaries.
+- [Unicode Data](internals/unicode-data.md) - Data generation and reproducibility goals.
+
+## Project
+
+- [Performance Evidence](project/performance.md) - Benchmark policy and future comparison plan.
+
+## Quick Links
+
+| Area | Path |
+|------|------|
+| Package metadata | [`../build.zig.zon`](../build.zig.zon) |
+| Build script | [`../build.zig`](../build.zig) |
+| Root module | [`../src/lib.zig`](../src/lib.zig) |
+| Generated tables | [`../src/unicode_tables.zig`](../src/unicode_tables.zig) |
+| Task backlog | `../tasks/todo.md` (local ignored task notes) |
+
+## Verification
+
+```bash
+zig build
+zig build test
+zig build test-api-guard
+zig build conformance
+zig build benchmark
+zig build bench-compare
+zig build verify
+```
+
+gcode is experimental. Treat performance and correctness claims as valid only
+when backed by current source, official Unicode fixtures, benchmark output, and
+downstream integration tests.

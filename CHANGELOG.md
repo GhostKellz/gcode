@@ -5,6 +5,57 @@ All notable changes to gcode will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-07-08
+
+### Added
+
+- **Full UCD 16.0.0 conformance** - `zig build conformance` runs the vendored
+  official Unicode test corpus through a shared harness: grapheme (1093/1093),
+  word (1826/1826), normalization (19965/19965), emoji (3781/3781), and East
+  Asian Width (2643/2643), all at 100%. Per-suite failure budgets are ratcheted
+  to zero so CI fails on any regression; `--strict` requires zero failures.
+- **UAX #15 normalization** - `src/normalize.zig` reimplements NFC/NFD/NFKC/NFKD
+  against generated one-level decomposition and canonical composition tables
+  (`src/normalize_data.zig`) with algorithmic Hangul (de)composition, canonical
+  ordering, and composition blocking. Replaces the previous hand-maintained stub.
+- **UAX #29 GB9c Indic conjunct clustering** - `src/incb.zig` classifies
+  `Indic_Conjunct_Break` (Consonant/Linker/Extend) from generated range tables so
+  `Consonant [Extend Linker]* Linker [Extend Linker]* × Consonant` clusters hold.
+- **Codegen emits normalization + InCB tables** - `zig build gen` now downloads
+  `DerivedCoreProperties.txt` and `CompositionExclusions.txt` and regenerates
+  `src/incb.zig` and `src/normalize_data.zig` from pinned UCD 16.0.0 data, so both
+  files are reproducible rather than hand-maintained.
+- **`TerminalString`** - grapheme-safe cursor movement, slicing, truncation, and
+  deletion over borrowed UTF-8 text (`src/terminal_string.zig`).
+- **API guard tests** - `src/api_guard.zig` force-references the v1.0-candidate
+  terminal surface so downstream Phantom/Ghostshell names cannot drift silently.
+- **`zig build verify`** - runs build, tests, API guard, and benchmark smoke; a
+  `bench-compare` scaffold records corpus metrics and reports external comparisons
+  as not configured.
+- **Fixtures** - local conformance-style, terminal, downstream (Phantom/Ghostshell),
+  and property/fuzz fixtures (UTF-8 round trips, normalization idempotence).
+- **Ambiguous-width policy** - APIs to treat East Asian Ambiguous characters as
+  narrow or wide.
+
+### Changed
+
+- **`stringWidth` measures grapheme clusters as terminal cells** for emoji ZWJ,
+  flags, keycaps, and emoji-modifier sequences instead of summing codepoint widths.
+- **BiDi class lookup** routes through generated table data.
+- **Generated tables expose metadata** - Unicode version and source data-file
+  information are reachable from the root API and recorded in benchmark output.
+- **Docs** - restructured into a single `docs/README.md` index plus lowercase
+  section docs; README/docs mark the project experimental and drop unproven
+  performance claims.
+- **Toolchain** - bumped `minimum_zig_version` to `0.17.0-dev.1257+67b05e521` and
+  the package version to `0.1.6`; `build.zig.zon` package paths include `docs`.
+
+### Fixed
+
+- **NFC buffer corruption** during recomposition.
+- **Terminal cursor/format controls** - zero-width format controls and
+  previous-grapheme cursor movement across emoji ZWJ clusters.
+
 ## [0.1.5] - 2026-06-04
 
 ### Added

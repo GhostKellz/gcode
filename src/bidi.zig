@@ -479,7 +479,6 @@ pub const BiDi = struct {
     }
 };
 
-/// Get BiDi class for a codepoint (placeholder - would use lookup table)
 /// Get the bidirectional class (UAX #9) for a codepoint via the generated
 /// tables. The tables honor `DerivedBidiClass.txt` `@missing` block defaults,
 /// so unassigned code points in RTL/Arabic ranges classify correctly.

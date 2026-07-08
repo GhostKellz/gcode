@@ -5,7 +5,7 @@ pub fn main() !void {
     // Test basic gcode functionality
     std.debug.print("gcode - Unicode library for terminals\n", .{});
 
-    // Test basic width detection (will use placeholder data for now)
+    // Test basic width detection through generated Unicode tables.
     const width_a = gcode.getWidth('A');
     const width_kanji = gcode.getWidth('漢');
 

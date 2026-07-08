@@ -153,6 +153,21 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
 
+    const api_guard_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/api_guard.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "gcode", .module = mod },
+            },
+        }),
+    });
+    const run_api_guard_tests = b.addRunArtifact(api_guard_tests);
+    const api_guard_step = b.step("test-api-guard", "Run stable API guard tests");
+    api_guard_step.dependOn(&run_api_guard_tests.step);
+    test_step.dependOn(&run_api_guard_tests.step);
+
     // Benchmark step for performance testing
     const benchmark_step = b.step("benchmark", "Run performance benchmarks");
     const benchmark_exe = b.addExecutable(.{
@@ -168,6 +183,45 @@ pub fn build(b: *std.Build) void {
     });
     const run_benchmark = b.addRunArtifact(benchmark_exe);
     benchmark_step.dependOn(&run_benchmark.step);
+
+    const bench_compare_step = b.step("bench-compare", "Run local benchmark comparison scaffold");
+    const bench_compare_exe = b.addExecutable(.{
+        .name = "bench_compare",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/bench_compare.zig"),
+            .target = target,
+            .optimize = .ReleaseFast,
+            .imports = &.{
+                .{ .name = "gcode", .module = mod },
+            },
+        }),
+    });
+    const run_bench_compare = b.addRunArtifact(bench_compare_exe);
+    bench_compare_step.dependOn(&run_bench_compare.step);
+
+    const conformance_step = b.step("conformance", "Run checked Unicode conformance fixture files");
+    const conformance_exe = b.addExecutable(.{
+        .name = "conformance_runner",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/conformance_runner.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "gcode", .module = mod },
+            },
+        }),
+    });
+    const run_conformance = b.addRunArtifact(conformance_exe);
+    conformance_step.dependOn(&run_conformance.step);
+
+    const verify_step = b.step("verify", "Run build, tests, API guard, and benchmark smoke");
+    verify_step.dependOn(&exe.step);
+    verify_step.dependOn(&run_mod_tests.step);
+    verify_step.dependOn(&run_exe_tests.step);
+    verify_step.dependOn(&run_api_guard_tests.step);
+    verify_step.dependOn(&run_conformance.step);
+    verify_step.dependOn(&run_benchmark.step);
+    verify_step.dependOn(&run_bench_compare.step);
 
     // Codegen step: regenerates src/unicode_tables.zig from the latest Unicode
     // data files (downloaded via curl into ./unicode_data). This is run manually

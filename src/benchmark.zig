@@ -55,6 +55,9 @@ pub const BenchmarkResults = struct {
     latin_ns_per_char: f64,
     ascii_ns_per_char: f64,
     complex_ns_per_char: f64,
+    width_lookup_ns: f64,
+    string_width_ns_per_byte: f64,
+    grapheme_ns_per_cluster: f64,
 
     /// Memory metrics
     peak_memory_mb: f64,
@@ -66,6 +69,13 @@ pub const BenchmarkResults = struct {
 
     /// Binary size impact
     binary_size_kb: f64,
+
+    /// Generated table metadata
+    unicode_version: []const u8,
+    data_file_count: usize,
+    stage1_entries: usize,
+    stage2_entries: usize,
+    stage3_entries: usize,
 
     /// Success flags for targets
     meets_latin_target: bool, // < 50ns per char
@@ -171,6 +181,10 @@ pub const BenchmarkRunner = struct {
         // Test complex script performance
         const complex_ns = try self.benchmarkComplexText();
 
+        const width_lookup_ns = self.benchmarkWidthLookup();
+        const string_width_ns = self.benchmarkStringWidth();
+        const grapheme_ns = self.benchmarkGraphemeIteration();
+
         // Test memory usage
         const memory_results = try self.benchmarkMemoryUsage();
 
@@ -181,11 +195,19 @@ pub const BenchmarkRunner = struct {
             .latin_ns_per_char = latin_ns,
             .ascii_ns_per_char = ascii_ns,
             .complex_ns_per_char = complex_ns,
+            .width_lookup_ns = width_lookup_ns,
+            .string_width_ns_per_byte = string_width_ns,
+            .grapheme_ns_per_cluster = grapheme_ns,
             .peak_memory_mb = memory_results.peak_mb,
             .cache_memory_kb = memory_results.cache_kb,
             .cache_hit_rate = cache_results.hit_rate,
             .cache_entries = cache_results.entries,
             .binary_size_kb = 150, // Estimated based on module size
+            .unicode_version = gcode.unicode_version,
+            .data_file_count = gcode.unicode_data_files.len,
+            .stage1_entries = gcode.table.stage1.len,
+            .stage2_entries = gcode.table.stage2.len,
+            .stage3_entries = gcode.table.stage3.len,
             .meets_latin_target = latin_ns < 50.0,
             .meets_memory_target = memory_results.cache_kb < 1024,
             .meets_size_target = true, // Estimated < 200KB
@@ -303,6 +325,50 @@ pub const BenchmarkRunner = struct {
         return total_ns / total_chars;
     }
 
+    fn benchmarkWidthLookup(self: *Self) f64 {
+        const samples = [_]u21{ 'A', '界', '😀', '\u{0301}', '\u{200D}', 'é', 'Ω' };
+        var sum: usize = 0;
+
+        const start_time = nanoTimestamp();
+        for (0..self.config.iterations * 100) |i| {
+            sum += gcode.getWidth(samples[i % samples.len]);
+        }
+        const end_time = nanoTimestamp();
+
+        std.mem.doNotOptimizeAway(sum);
+        return @as(f64, @floatFromInt(end_time - start_time)) / @as(f64, @floatFromInt(self.config.iterations * 100));
+    }
+
+    fn benchmarkStringWidth(self: *Self) f64 {
+        const text = "ASCII plus 世界 plus emoji 😀 and combining e\u{0301}";
+        var sum: usize = 0;
+
+        const start_time = nanoTimestamp();
+        for (0..self.config.iterations * 10) |_| {
+            sum += gcode.stringWidth(text);
+        }
+        const end_time = nanoTimestamp();
+
+        std.mem.doNotOptimizeAway(sum);
+        const bytes_processed = text.len * self.config.iterations * 10;
+        return @as(f64, @floatFromInt(end_time - start_time)) / @as(f64, @floatFromInt(bytes_processed));
+    }
+
+    fn benchmarkGraphemeIteration(self: *Self) f64 {
+        const text = "a界e\u{0301}\u{1F469}\u{200D}\u{1F4BB}\u{1F1FA}\u{1F1F8}";
+        var cluster_count: usize = 0;
+
+        const start_time = nanoTimestamp();
+        for (0..self.config.iterations * 10) |_| {
+            var iter = gcode.graphemeIterator(text);
+            while (iter.next()) |_| cluster_count += 1;
+        }
+        const end_time = nanoTimestamp();
+
+        std.mem.doNotOptimizeAway(cluster_count);
+        return @as(f64, @floatFromInt(end_time - start_time)) / @as(f64, @floatFromInt(cluster_count));
+    }
+
     /// Benchmark memory usage
     fn benchmarkMemoryUsage(self: *Self) !struct { peak_mb: f64, cache_kb: f64 } {
         var advanced_shaper = gcode.AdvancedShaper.init(self.tracking_allocator.allocator());
@@ -410,6 +476,14 @@ pub const BenchmarkRunner = struct {
         std.debug.print("  Latin text:    {d:>6.1} ns/char {s}\n", .{ results.latin_ns_per_char, if (results.meets_latin_target) "✅" else "❌" });
         std.debug.print("  ASCII text:    {d:>6.1} ns/char\n", .{results.ascii_ns_per_char});
         std.debug.print("  Complex text:  {d:>6.1} ns/char\n", .{results.complex_ns_per_char});
+        std.debug.print("  Width lookup:  {d:>6.1} ns/op\n", .{results.width_lookup_ns});
+        std.debug.print("  String width:  {d:>6.1} ns/byte\n", .{results.string_width_ns_per_byte});
+        std.debug.print("  Graphemes:     {d:>6.1} ns/cluster\n", .{results.grapheme_ns_per_cluster});
+
+        std.debug.print("\nUnicode Data:\n", .{});
+        std.debug.print("  Version:       {s}\n", .{results.unicode_version});
+        std.debug.print("  Data files:    {d}\n", .{results.data_file_count});
+        std.debug.print("  Stage entries: {d}/{d}/{d}\n", .{ results.stage1_entries, results.stage2_entries, results.stage3_entries });
 
         std.debug.print("\nMemory Metrics:\n", .{});
         std.debug.print("  Peak memory:   {d:>6.1} MB\n", .{results.peak_memory_mb});
@@ -422,7 +496,7 @@ pub const BenchmarkRunner = struct {
         std.debug.print("\nBinary Size:\n", .{});
         std.debug.print("  Estimated:     {d:>6.1} KB {s}\n", .{ results.binary_size_kb, if (results.meets_size_target) "✅" else "❌" });
 
-        std.debug.print("\nPhase 4 Targets:\n", .{});
+        std.debug.print("\nInformational Targets:\n", .{});
         std.debug.print("  < 50ns/char:   {s}\n", .{if (results.meets_latin_target) "✅ PASS" else "❌ FAIL"});
         std.debug.print("  < 1MB cache:   {s}\n", .{if (results.meets_memory_target) "✅ PASS" else "❌ FAIL"});
         std.debug.print("  < 200KB size:  {s}\n", .{if (results.meets_size_target) "✅ PASS" else "❌ FAIL"});
@@ -433,7 +507,7 @@ pub const BenchmarkRunner = struct {
             results.meets_size_target and
             results.meets_cache_target;
 
-        std.debug.print("\nOverall: {s}\n", .{if (all_targets_met) "🎉 ALL PHASE 4 TARGETS MET!" else "⚠️  Some targets need work"});
+        std.debug.print("\nOverall: {s}\n", .{if (all_targets_met) "All informational targets met" else "Benchmark evidence recorded; tune before making performance claims"});
     }
 };
 

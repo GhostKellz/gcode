@@ -84,6 +84,10 @@ fn computeBreak(
     class1_raw: WordBreakClass,
     class2: WordBreakClass,
     gbc2: GraphemeBoundaryClass,
+    /// Effective class of the next non-ignorable code point after cp2, or null
+    /// at end of text. WB6/WB7b/WB12 are lookahead rules: the break before a
+    /// Mid* character is only suppressed when the right class follows.
+    class3: ?WordBreakClass,
 ) bool {
     // WB3: CR x LF
     if (class1_raw == .cr and class2 == .lf) {
@@ -106,8 +110,9 @@ fn computeBreak(
         return false;
     }
 
-    // WB3d: WSegSpace x WSegSpace
-    if (class1_effective == .wsegspace and class2 == .wsegspace) {
+    // WB3d: WSegSpace x WSegSpace. Applied before WB4's ignore logic, so it only
+    // fires for directly adjacent spaces; an intervening Extend/Format breaks it.
+    if (class1_raw == .wsegspace and class2 == .wsegspace) {
         state.pending_mid = .none;
         return false;
     }
@@ -126,10 +131,15 @@ fn computeBreak(
         return false;
     }
 
-    // WB6: AHLetter x (MidLetter | MidNumLetQ)
+    // WB6: AHLetter x (MidLetter | MidNumLetQ) AHLetter
+    // Only suppress the break when an AHLetter actually follows (WB7 completes it).
     if (isAHLetter(c1) and isMidLetterOrMidNumLetQ(c2)) {
-        state.pending_mid = .ahletter;
-        return false;
+        if (class3) |c3| {
+            if (isAHLetter(c3)) {
+                state.pending_mid = .ahletter;
+                return false;
+            }
+        }
     }
 
     // WB7: (MidLetter | MidNumLetQ) x AHLetter following WB6
@@ -145,9 +155,14 @@ fn computeBreak(
     }
 
     // WB7b: Hebrew_Letter x Double_Quote Hebrew_Letter
+    // Suppress only when a Hebrew_Letter follows (WB7c completes it).
     if (c1 == .hebrew_letter and c2 == .double_quote) {
-        state.pending_mid = .hebrew_double_quote;
-        return false;
+        if (class3) |c3| {
+            if (c3 == .hebrew_letter) {
+                state.pending_mid = .hebrew_double_quote;
+                return false;
+            }
+        }
     }
 
     // WB7c: Hebrew_Letter Double_Quote x Hebrew_Letter
@@ -168,11 +183,17 @@ fn computeBreak(
         return false;
     }
 
-    // WB11 / WB12: numeric sequences with punctuation
+    // WB12: Numeric x (MidNum | MidNumLetQ) Numeric
+    // Suppress only when a Numeric follows (WB11 completes it).
     if (c1 == .numeric and isMidNumOrMidNumLetQ(c2)) {
-        state.pending_mid = .numeric;
-        return false;
+        if (class3) |c3| {
+            if (c3 == .numeric) {
+                state.pending_mid = .numeric;
+                return false;
+            }
+        }
     }
+    // WB11: Numeric (MidNum | MidNumLetQ) x Numeric
     if (state.pending_mid == .numeric and isMidNumOrMidNumLetQ(c1) and c2 == .numeric) {
         state.pending_mid = .none;
         return false;
@@ -180,16 +201,6 @@ fn computeBreak(
 
     // WB13: Katakana x Katakana
     if (c1 == .katakana and c2 == .katakana) {
-        state.pending_mid = .none;
-        return false;
-    }
-
-    // WB13 (mid) handling
-    if (c1 == .katakana and isMidNumOrMidNumLetQ(c2)) {
-        state.pending_mid = .katakana;
-        return false;
-    }
-    if (state.pending_mid == .katakana and isMidNumOrMidNumLetQ(c1) and c2 == .katakana) {
         state.pending_mid = .none;
         return false;
     }
@@ -217,7 +228,18 @@ fn computeBreak(
 
 /// Determines if there is a word break between two codepoints.
 /// This must be called sequentially maintaining the state between calls.
+///
+/// This convenience entry point has no lookahead, so the WB6/WB7b/WB12
+/// suppress-before-Mid rules treat cp2 as if nothing follows it. `WordIterator`
+/// supplies real lookahead via `wordBreakAhead` for full UAX #29 conformance.
 pub fn wordBreak(cp1: u21, cp2: u21, state: *BreakState) bool {
+    return wordBreakAhead(cp1, cp2, null, state);
+}
+
+/// Like `wordBreak`, but `class3` carries the effective word-break class of the
+/// next non-ignorable code point after cp2 (or null at end of text), which the
+/// lookahead rules WB6/WB7b/WB12 need to decide the break before a Mid* class.
+pub fn wordBreakAhead(cp1: u21, cp2: u21, class3: ?WordBreakClass, state: *BreakState) bool {
     const props1 = tables.get(cp1);
     const props2 = tables.get(cp2);
 
@@ -235,7 +257,7 @@ pub fn wordBreak(cp1: u21, cp2: u21, state: *BreakState) bool {
     else
         class1;
 
-    const result = computeBreak(state, effective_class1, class1, class2, props2.grapheme_boundary_class);
+    const result = computeBreak(state, effective_class1, class1, class2, props2.grapheme_boundary_class, class3);
 
     state.push(class2);
 
@@ -244,6 +266,22 @@ pub fn wordBreak(cp1: u21, cp2: u21, state: *BreakState) bool {
     }
 
     return result;
+}
+
+/// Returns the effective word-break class of the first non-ignorable code point
+/// at or after `from` in `bytes`, or null if none remains. Used for WB6/WB7b/WB12
+/// lookahead, which must skip Extend/Format/ZWJ per WB4.
+fn lookaheadClass(bytes: []const u8, from: usize) ?WordBreakClass {
+    var i = from;
+    while (i < bytes.len) {
+        const len = std.unicode.utf8ByteSequenceLength(bytes[i]) catch return null;
+        if (i + len > bytes.len) return null;
+        const cp = std.unicode.utf8Decode(bytes[i .. i + len]) catch return null;
+        const class = tables.get(cp).word_break_class;
+        if (!isIgnorable(class)) return class;
+        i += len;
+    }
+    return null;
 }
 
 /// Iterator for walking through word boundaries in UTF-8 text.
@@ -285,8 +323,10 @@ pub const WordIterator = struct {
             if (self.index + len > self.bytes.len) break;
             cp2 = @intCast(std.unicode.utf8Decode(self.bytes[self.index .. self.index + len]) catch break);
 
-            // Check if there's a word break
-            if (wordBreak(cp1, cp2, &self.state)) {
+            // Check if there's a word break, giving WB6/WB7b/WB12 the lookahead
+            // code point they need to decide the break before a Mid* class.
+            const class3 = lookaheadClass(self.bytes, self.index + len);
+            if (wordBreakAhead(cp1, cp2, class3, &self.state)) {
                 // Break found, current segment ends before this codepoint
                 break;
             }

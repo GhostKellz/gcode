@@ -1,40 +1,152 @@
 const std = @import("std");
 const props = @import("properties.zig");
+const incb = @import("incb.zig");
 const GraphemeBoundaryClass = props.GraphemeBoundaryClass;
 const tables = props.tables;
 
 /// Determines if there is a grapheme break between two codepoints.
 /// This must be called sequentially maintaining the state between calls.
 ///
-/// This function does NOT work with control characters. Control characters,
-/// line feeds, and carriage returns are expected to be filtered out before
-/// calling this function. This is because this function is tuned for terminals.
+/// CR, LF, and Grapheme_Cluster_Break=Control code points are handled directly
+/// here (GB3/GB4/GB5) rather than through the boundary table, because the table
+/// intentionally folds them into `.invalid` (see `GraphemeBoundaryClass`).
 pub fn graphemeBreak(cp1: u21, cp2: u21, state: *BreakState) bool {
+    // GB3, GB4, GB5 take priority over the table-driven rules (GB6+).
+    const c1 = controlKind(cp1);
+    const c2 = controlKind(cp2);
+    if (c1 != .none or c2 != .none) {
+        state.* = .{};
+        // GB3: CR × LF (no break inside a CRLF pair).
+        if (c1 == .cr and c2 == .lf) return false;
+        // GB4: (Control | CR | LF) ÷  and  GB5: ÷ (Control | CR | LF).
+        return true;
+    }
+
+    // GB9c: Indic conjunct clusters. Tracked at runtime because the InCB
+    // property is orthogonal to the boundary-class table. This only ever
+    // suppresses a break (an "×" rule), so it is safe to overlay on the table.
+    const gb9c_no_break = updateIndicConjunct(cp1, cp2, state);
+
     const p1 = tables.get(cp1);
     const p2 = tables.get(cp2);
 
+    const gbc_state: Precompute.GbcState = .{
+        .extended_pictographic = state.extended_pictographic,
+        .regional_indicator = state.regional_indicator,
+    };
     const value = Precompute.data[
         (Precompute.Key{
             .gbc1 = p1.grapheme_boundary_class,
             .gbc2 = p2.grapheme_boundary_class,
-            .state = state.*,
+            .state = gbc_state,
         }).index()
     ];
-    state.* = value.state;
+    state.extended_pictographic = value.state.extended_pictographic;
+    state.regional_indicator = value.state.regional_indicator;
+
+    if (gb9c_no_break) return false;
     return value.result;
 }
 
+/// GB9c: `Consonant [Extend Linker]* Linker [Extend Linker]* × Consonant`.
+/// Threads the InCB chain through `state` and returns true when the boundary
+/// before `cp2` must be suppressed. The `cp1` seeding is idempotent for
+/// sequential iteration (where `cp1` was the previous `cp2`) and supplies the
+/// missing left context on the very first call.
+fn updateIndicConjunct(cp1: u21, cp2: u21, state: *BreakState) bool {
+    switch (incb.classify(cp1)) {
+        .consonant => if (!state.incb_consonant) {
+            state.incb_consonant = true;
+            state.incb_linker = false;
+        },
+        .linker => if (state.incb_consonant) {
+            state.incb_linker = true;
+        },
+        .extend => {},
+        .none => {
+            state.incb_consonant = false;
+            state.incb_linker = false;
+        },
+    }
+
+    const k2 = incb.classify(cp2);
+    const join = state.incb_consonant and state.incb_linker and k2 == .consonant;
+
+    switch (k2) {
+        .consonant => {
+            // A consonant both closes a conjunct and opens the next one.
+            state.incb_consonant = true;
+            state.incb_linker = false;
+        },
+        .linker => if (state.incb_consonant) {
+            state.incb_linker = true;
+        },
+        .extend => {},
+        .none => {
+            state.incb_consonant = false;
+            state.incb_linker = false;
+        },
+    }
+
+    return join;
+}
+
 /// The state that must be maintained between calls to graphemeBreak.
-pub const BreakState = packed struct(u2) {
+/// `incb_consonant`/`incb_linker` track the GB9c Indic conjunct chain.
+pub const BreakState = packed struct(u4) {
     extended_pictographic: bool = false,
     regional_indicator: bool = false,
+    incb_consonant: bool = false,
+    incb_linker: bool = false,
 };
+
+const ControlKind = enum { none, cr, lf, control };
+
+/// Classifies CR, LF, and Grapheme_Cluster_Break=Control code points for the
+/// GB3/GB4/GB5 rules. Ranges are the `Control` property from Unicode 16.0.0
+/// `GraphemeBreakProperty.txt`; CR (000D) and LF (000A) carry their own break
+/// classes and are reported separately so GB3 can keep a CRLF pair together.
+fn controlKind(cp: u21) ControlKind {
+    return switch (cp) {
+        0x000D => .cr,
+        0x000A => .lf,
+        0x0000...0x0009,
+        0x000B...0x000C,
+        0x000E...0x001F,
+        0x007F...0x009F,
+        0x00AD,
+        0x061C,
+        0x180E,
+        0x200B,
+        0x200E...0x200F,
+        0x2028...0x2029,
+        0x202A...0x202E,
+        0x2060...0x206F,
+        0xFEFF,
+        0xFFF0...0xFFFB,
+        0x13430...0x1343F,
+        0x1BCA0...0x1BCA3,
+        0x1D173...0x1D17A,
+        0xE0000...0xE001F,
+        0xE0080...0xE00FF,
+        0xE01F0...0xE0FFF,
+        => .control,
+        else => .none,
+    };
+}
 
 /// Precomputed lookup table for all grapheme boundary permutations.
 /// This table encodes the Unicode grapheme boundary rules in a compact format.
 const Precompute = struct {
+    /// The subset of `BreakState` the table-driven rules (GB6-GB13) depend on.
+    /// GB9c's InCB bits live outside the table and are handled separately.
+    const GbcState = packed struct(u2) {
+        extended_pictographic: bool = false,
+        regional_indicator: bool = false,
+    };
+
     const Key = packed struct(u10) {
-        state: BreakState,
+        state: GbcState,
         gbc1: GraphemeBoundaryClass,
         gbc2: GraphemeBoundaryClass,
 
@@ -45,7 +157,7 @@ const Precompute = struct {
 
     const Value = packed struct(u3) {
         result: bool,
-        state: BreakState,
+        state: GbcState,
     };
 
     /// Precomputed table of all possible grapheme boundary decisions.
@@ -58,7 +170,7 @@ const Precompute = struct {
         for (0..1 << 2) |state_init| { // 2^2 = 4 possible states
             for (info.field_names) |field1| {
                 for (info.field_names) |field2| {
-                    var state: BreakState = @bitCast(@as(u2, @intCast(state_init)));
+                    var state: GbcState = @bitCast(@as(u2, @intCast(state_init)));
                     const key: Key = .{
                         .gbc1 = @field(GraphemeBoundaryClass, field1),
                         .gbc2 = @field(GraphemeBoundaryClass, field2),
@@ -79,7 +191,7 @@ const Precompute = struct {
 fn graphemeBreakClass(
     gbc1: GraphemeBoundaryClass,
     gbc2: GraphemeBoundaryClass,
-    state: *BreakState,
+    state: *Precompute.GbcState,
 ) bool {
     // GB11: Emoji Extend* ZWJ x Emoji
     if (!state.extended_pictographic and gbc1.isExtendedPictographic()) {
